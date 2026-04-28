@@ -20,7 +20,9 @@ import {
   Star,
   Award,
   Loader2,
+  MapPin,
 } from "lucide-react";
+import { StudentTour, startStudentTour } from "@/components/StudentTour";
 
 interface DashboardData {
   studentName: string
@@ -168,8 +170,10 @@ const StudentDashboard = () => {
 
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
+      <StudentTour />
+
       {/* Welcome Header */}
-      <Card className="bg-gradient-subtle border-none">
+      <Card id="tour-welcome" className="bg-gradient-subtle border-none">
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
@@ -186,16 +190,25 @@ const StudentDashboard = () => {
                 Keep up the great work! Here's your college application progress.
               </p>
             </div>
-            <div className="text-right">
-              <div className="text-3xl font-bold text-primary">{overallProgress}%</div>
-              <p className="text-sm text-muted-foreground">Complete</p>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={startStudentTour}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors border border-border rounded-full px-3 py-1.5 hover:border-primary/40"
+              >
+                <MapPin className="h-3 w-3" />
+                Take the tour
+              </button>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-primary">{overallProgress}%</div>
+                <p className="text-sm text-muted-foreground">Complete</p>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Progress Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div id="tour-progress" className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
           { label: 'Applications', icon: Calendar, data: data?.applications },
           { label: 'Essays', icon: FileText, data: data?.essays },
@@ -226,7 +239,7 @@ const StudentDashboard = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Upcoming Deadlines */}
-        <Card>
+        <Card id="tour-deadlines">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-primary" />
@@ -299,18 +312,23 @@ const StudentDashboard = () => {
       </div>
 
       {/* Essay Feedback from Counselor */}
-      <StudentEssayFeedback />
+      <div id="tour-essay-feedback">
+        <StudentEssayFeedback />
+      </div>
 
       {/* Quick Actions */}
-      <Card>
+      <Card id="tour-quick-actions">
         <CardHeader>
-          <CardTitle 
-          >Quick Actions</CardTitle>
+          <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-            <Button variant="outline" className="h-16 flex-col gap-2"
-            onClick={() => navigate('/submit-essay')}>
+            <Button
+              id="tour-upload-essay"
+              variant="outline"
+              className="h-16 flex-col gap-2"
+              onClick={() => navigate('/submit-essay')}
+            >
               <Upload className="h-5 w-5" />
               Upload Essay
             </Button>
@@ -322,11 +340,12 @@ const StudentDashboard = () => {
               <CheckCircle className="h-5 w-5" />
               Check Tasks
             </Button>
-            <Button variant="outline" className="h-16 flex-col gap-2">
+            <Button variant="outline" className="h-16 flex-col gap-2" onClick={() => navigate('/student-messages')}>
               <MessageSquare className="h-5 w-5" />
               Message Counselor
             </Button>
             <Button
+              id="tour-rec-letters"
               variant="outline"
               className="h-16 flex-col gap-2 border-primary/30 hover:bg-primary/5"
               onClick={() => navigate('/student-recommendation-letters')}
@@ -334,12 +353,13 @@ const StudentDashboard = () => {
               <Award className="h-5 w-5 text-primary" />
               Rec Letters
             </Button>
-             <Button
+            <Button
+              id="tour-add-application"
               variant="outline"
               className="h-16 flex-col gap-2 border-primary/30 hover:bg-primary/5"
               onClick={() => navigate('/add-application')}
             >
-               <FileText className="h-5 w-5" />
+              <FileText className="h-5 w-5" />
               Add Application
             </Button>
           </div>

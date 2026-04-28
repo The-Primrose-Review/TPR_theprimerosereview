@@ -147,6 +147,59 @@
   transform: rotateY(180deg);
 }
 
+/* ── Driver.js tour overrides ── */
+.driver-popover {
+  border-radius: 0.75rem !important;
+  box-shadow: 0 20px 60px -12px rgba(0, 0, 0, 0.25) !important;
+  max-width: 320px !important;
+}
+.driver-popover-title {
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  color: hsl(230, 45%, 12%) !important;
+  margin-bottom: 0.4rem !important;
+}
+.driver-popover-description {
+  font-size: 0.875rem !important;
+  color: hsl(220, 15%, 45%) !important;
+  line-height: 1.55 !important;
+}
+.driver-popover-footer {
+  margin-top: 1rem !important;
+}
+.driver-popover-next-btn,
+.driver-popover-done-btn {
+  background: hsl(230, 55%, 28%) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 0.5rem !important;
+  padding: 0.35rem 0.85rem !important;
+  font-weight: 600 !important;
+  font-size: 0.8rem !important;
+  cursor: pointer !important;
+}
+.driver-popover-next-btn:hover,
+.driver-popover-done-btn:hover {
+  background: hsl(230, 55%, 22%) !important;
+}
+.driver-popover-prev-btn {
+  background: transparent !important;
+  color: hsl(220, 15%, 45%) !important;
+  border: 1px solid hsl(220, 25%, 88%) !important;
+  border-radius: 0.5rem !important;
+  padding: 0.35rem 0.85rem !important;
+  font-size: 0.8rem !important;
+  cursor: pointer !important;
+}
+.driver-popover-prev-btn:hover {
+  border-color: hsl(230, 55%, 28%) !important;
+  color: hsl(230, 55%, 28%) !important;
+}
+.driver-popover-progress-text {
+  font-size: 0.75rem !important;
+  color: hsl(220, 15%, 55%) !important;
+}
+
 /* ── Celebration animations ── */
 @keyframes celebration-pop {
   0%   { opacity: 0; transform: translateY(24px) scale(0.85); }

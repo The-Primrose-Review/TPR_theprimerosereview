@@ -6,7 +6,15 @@ import { Badge } from "@/components/ui/badge";
 
 type UserRole = 'counselor' | 'student' | 'parent' | 'principal';
 
-const mainItems = [{
+interface NavItem {
+  title: string;
+  url: string;
+  icon: React.ElementType;
+  badge?: number;
+  tourId?: string;
+}
+
+const mainItems: NavItem[] = [{
   title: "Dashboard",
   url: "/dashboard",
   icon: BarChart3
@@ -41,27 +49,32 @@ const mainItems = [{
   icon: Bell
 }];
 
-const studentItems = [{
+const studentItems: NavItem[] = [{
   title: "Student Dashboard",
   url: "/student-dashboard",
-  icon: UserCircle
+  icon: UserCircle,
+  tourId: "tour-nav-dashboard",
 }, {
   title: "My Work",
   url: "/student-personal-area",
-  icon: BookOpen
+  icon: BookOpen,
+  tourId: "tour-nav-my-work",
 }, {
   title: "Recommendation Letters",
   url: "/student-recommendation-letters",
-  icon: Award
+  icon: Award,
+  tourId: "tour-nav-rec",
 }, {
   title: "My Stats",
   url: "/student-stats",
-  icon: BarChart3
+  icon: BarChart3,
+  tourId: "tour-nav-stats",
 }, {
   title: "Messages",
   url: "/student-messages",
   icon: MessageSquare,
-  badge: 3
+  badge: 3,
+  tourId: "tour-nav-messages",
 }];
 
 const parentItems = [{
@@ -126,15 +139,15 @@ export function AppSidebar() {
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     isActive ? "bg-primary text-primary-foreground" : "hover:bg-accent hover:text-accent-foreground";
 
-  const renderMenuItem = (item: typeof mainItems[0]) => (
+  const renderMenuItem = (item: NavItem) => (
     <SidebarMenuItem key={item.title}>
       <SidebarMenuButton asChild>
-        <NavLink to={item.url} end className={getNavCls}>
+        <NavLink to={item.url} end className={getNavCls} id={item.tourId}>
           <item.icon className="h-4 w-4" />
           {open && (
             <>
               <span>{item.title}</span>
-              {'badge' in item && item.badge && (
+              {item.badge && (
                 <Badge variant="destructive" className="ml-auto h-5 w-5 flex items-center justify-center p-0 text-xs">
                   {item.badge}
                 </Badge>
