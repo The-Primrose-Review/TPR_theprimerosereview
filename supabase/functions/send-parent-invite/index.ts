@@ -143,7 +143,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "onboarding@resend.dev",   // ← swap for your verified domain email when ready
+        from: "The Primrose Review <team@primrosecrm.com>",   // ← swap for your verified domain email when ready
         to: parentEmail,
         subject: `You're invited to follow ${displayStudent}'s college journey`,
         html,

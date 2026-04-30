@@ -135,8 +135,8 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "onboarding@resend.dev",
-        to: "sumeetb271001@gmail.com", // TODO: swap to studentEmail once domain verified on resend.com/domains
+        from: "The Primrose Review <team@primrosecrm.com>",
+        to: studentEmail,
         subject: `${counselorName} left feedback on your essay — The Primrose Review`,
         html,
       }),
