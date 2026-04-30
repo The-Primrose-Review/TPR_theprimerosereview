@@ -70,11 +70,7 @@ const LoadingNew = () => {
 
     const handleRedirect = () => {
       setStatus("redirecting");
-      if (isAuthenticated) {
-        navigate('/onboarding-success', { replace: true });
-      } else {
-        navigate('/login', { replace: true, state: { from: '/onboarding-success' } });
-      }
+      navigate('/student-dashboard', { replace: true });
     };
 
     saveAndRedirect();
@@ -87,11 +83,7 @@ const LoadingNew = () => {
     try {
       sessionStorage.setItem('onboardingAnswers', JSON.stringify(answers));
       toast.success("Continuing to next step...");
-      if (isAuthenticated) {
-        navigate('/onboarding-success', { replace: true });
-      } else {
-        navigate('/login', { replace: true, state: { from: '/onboarding-success' } });
-      }
+      navigate('/student-dashboard', { replace: true });
     } catch (error) {
       setStatus("error");
       setErrorMessage("We had trouble processing your information. Please try again.");

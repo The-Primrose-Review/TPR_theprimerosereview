@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -7,7 +7,10 @@ import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-ro
 import { AppSidebar } from "@/components/AppSidebar";
 import { DemoNavigation } from "@/components/DemoNavigation";
 import { Button } from "@/components/ui/button";
-import { Rocket } from "lucide-react";
+import { Rocket, CheckCircle2 } from "lucide-react";
+import { useAuthState } from "@/hooks/useAuthState";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import Index from "./pages/Index";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
@@ -59,9 +62,25 @@ const queryClient = new QueryClient();
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuthState();
+  const [onboardingCompleted, setOnboardingCompleted] = useState(false);
   const noSidebarRoutes = ['/', '/auth', '/demo', '/product-demo', '/demo-maker'];
   const isStudentRoute = location.pathname.startsWith('/student') || location.pathname === '/submit-essay' || location.pathname === '/add-application' || location.pathname === '/student-recommendation-letters' || location.pathname === '/student-messages';
   const showSidebar = !noSidebarRoutes.includes(location.pathname);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+    const checkOnboarding = async () => {
+      const { data } = await supabase
+        .from('onboarding_answers')
+        .select('completed')
+        .eq('user_id', user.id)
+        .eq('completed', true)
+        .maybeSingle();
+      if (data?.completed) setOnboardingCompleted(true);
+    };
+    checkOnboarding();
+  }, [isAuthenticated, user]);
 
   if (!showSidebar) {
     return <>{children}</>;
@@ -86,14 +105,25 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
             </div>
             <div className="flex items-center gap-4">
               {isStudentRoute && (
-                <Button
-                  onClick={() => navigate('/onboarding')}
-                  className="gap-2 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground border border-border font-medium transition-colors"
-                  size="sm"
-                >
-                  <Rocket className="h-4 w-4" />
-                  Complete full onboarding here
-                </Button>
+                onboardingCompleted ? (
+                  <Button
+                    onClick={() => toast.success("You've completed your onboarding — welcome aboard! We're so excited to have you here.", { duration: 4000 })}
+                    className="gap-2 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 font-medium transition-colors"
+                    size="sm"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Onboarding Complete!
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => navigate('/onboarding')}
+                    className="gap-2 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground border border-border font-medium transition-colors"
+                    size="sm"
+                  >
+                    <Rocket className="h-4 w-4" />
+                    Complete full onboarding here
+                  </Button>
+                )
               )}
               <img
                 src={clientLogo}

@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, Trophy, Star, Loader2, SkipForward } from "lucide-react"; // Lock removed — premium gating disabled
+import { ArrowLeft, ArrowRight, Trophy, Star, Loader2 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { QuestionInput } from "@/components/QuestionInput";
 import { steps } from "@/data/onboardingSteps";
@@ -17,7 +17,6 @@ import { toast } from "sonner";
 import { v4 as uuidv4 } from 'uuid';
 import OnboardingTOC from "@/components/onboarding/OnboardingTOC";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const Onboarding = () => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -75,9 +74,13 @@ const Onboarding = () => {
           .eq('user_id', user.id)
           .single();
         if (error && error.code !== 'PGRST116') return;
-        if (data?.completed) { navigate('/statement-preview'); return; }
+        if (data?.completed) { navigate('/student-dashboard'); return; }
         if (data?.answers && typeof data.answers === 'object') {
           setAnswers(data.answers as Record<string, any>);
+          const savedStep = localStorage.getItem('onboarding_step');
+          const savedQuestion = localStorage.getItem('onboarding_question');
+          if (savedStep !== null) setCurrentStep(parseInt(savedStep, 10));
+          if (savedQuestion !== null) setCurrentQuestion(parseInt(savedQuestion, 10));
         }
       } catch (error) {
         console.error('Error checking onboarding status:', error);
@@ -137,6 +140,13 @@ const Onboarding = () => {
     }
   };
 
+  const handleCompleteLater = async () => {
+    await saveAnswersToSupabase();
+    localStorage.setItem('onboarding_step', String(currentStep));
+    localStorage.setItem('onboarding_question', String(currentQuestion));
+    navigate('/student-dashboard');
+  };
+
   const handleNext = async () => {
     if (!question) return;
     const currentAnswer = answers[question.id];
@@ -193,8 +203,6 @@ const Onboarding = () => {
     } else { moveToNextQuestion(); }
   };
 
-  const handleSkip = () => moveToNextQuestion();
-
   const moveToNextQuestion = async () => {
     if (!step) return;
     if (currentQuestion < step.questions.length - 1) {
@@ -231,6 +239,8 @@ const Onboarding = () => {
           });
         }
       } catch (error) { console.error("Error marking onboarding as completed:", error); }
+      localStorage.removeItem('onboarding_step');
+      localStorage.removeItem('onboarding_question');
       navigate("/loading-new", { state: { answers, anonymousId } });
     }
   };
@@ -286,14 +296,16 @@ const Onboarding = () => {
         <div className="max-w-4xl mx-auto">
           <Progress value={progress} className="h-2" />
           <div className="flex justify-between items-center mt-2 sm:mt-3">
-            <p className="text-xs sm:text-sm text-neutral-500">
-              Step {currentStep + 1} of {totalSteps}
-              {/* Premium badges removed — gating disabled
-              {!hasPremiumAccess && currentStep < 4 && <span className="ml-1 sm:ml-2 inline-flex items-center text-xs text-yellow-600">🔓 Free Questions</span>}
-              {hasPremiumAccess && <span className="ml-1 sm:ml-2 inline-flex items-center text-xs text-green-600">✓ Premium Unlocked</span>}
-              */}
-            </p>
-            <p className="text-xs sm:text-sm text-neutral-500">{currentQuestionOverall}/{totalQuestions}</p>
+            <p className="text-xs sm:text-sm text-neutral-500">Step {currentStep + 1} of {totalSteps}</p>
+            <div className="flex items-center gap-3">
+              <p className="text-xs sm:text-sm text-neutral-500">{currentQuestionOverall}/{totalQuestions}</p>
+              <button
+                onClick={handleCompleteLater}
+                className="text-xs text-neutral-400 hover:text-neutral-600 underline underline-offset-2 transition-colors"
+              >
+                Complete later
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -351,18 +363,6 @@ const Onboarding = () => {
             </Button>
             {/* {!needsPremiumAccess && ( — always true, gating disabled */}
               <div className="flex gap-2">
-                {(question.id === "challenge" || question.id === "degree_interest") && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="outline" onClick={handleSkip} className="flex items-center gap-2 transition-all duration-300 text-sm sm:text-base px-3 sm:px-4 py-2 sm:py-2">
-                          <SkipForward className="w-3 sm:w-4 h-3 sm:h-4" /> Skip
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent><p>Not recommended - this helps create a better personal statement</p></TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
                 <Button
                   onClick={handleNext}
                   disabled={isSubmitting}
