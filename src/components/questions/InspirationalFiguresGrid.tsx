@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import { MultipleQuestion } from '@/types/onboarding';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import figures from '@/data/steps/inspirationalFigures';
 import { Card } from "@/components/ui/card";
@@ -115,12 +114,14 @@ export const InspirationalFiguresGrid: React.FC<InspirationalFiguresGridProps> =
               >
                 <div className="p-4 flex flex-col items-center justify-center h-full">
                   <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center mb-3 shrink-0">
-                    {figure.name === "Other" ? (
-                      <span className="text-2xl sm:text-3xl font-bold text-primary">+</span>
+                    {figure.image ? (
+                      <img
+                        src={figure.image}
+                        alt={figure.name}
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
-                      <span className="text-xl sm:text-2xl font-bold text-primary select-none">
-                        {figure.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                      </span>
+                      <span className="text-2xl sm:text-3xl font-bold text-primary">+</span>
                     )}
                   </div>
                   <div className="text-center">
