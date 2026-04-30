@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useStudentPersonalArea, type EssayFeedback } from "@/hooks/Usestudentpersonalarea";
+import { StudentActionItemsSection } from "@/components/StudentActionItemsSection";
 import type { TrackedChange } from "@/components/EssayFeedbackModal";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, GraduationCap } from "lucide-react";
@@ -69,11 +70,8 @@ const StudentPersonalArea = () => {
   const {
     essays,
     sentFeedback,
-    tasks,
     isLoadingEssays,
     isLoadingFeedback,
-    isLoadingTasks,
-    completeTask,
     getFeedbackForEssay,
   } = useStudentPersonalArea();
 
@@ -236,12 +234,28 @@ const StudentPersonalArea = () => {
                       </div>
                     </div>
                     <div className="flex gap-2 mt-4">
-                      <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
-                        View Details
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
-                        Download
-                      </Button>
+                      {essay.status === "draft" ? (
+                        <Button
+                          size="sm"
+                          className="border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/submit-essay?draftId=${essay.id}`);
+                          }}
+                        >
+                          Continue Writing
+                        </Button>
+                      ) : (
+                        <>
+                          <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
+                            View Details
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
+                            Download
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -345,62 +359,7 @@ const StudentPersonalArea = () => {
 
         {/* ── Tasks Tab ── */}
         <TabsContent value="tasks" className="space-y-6">
-          <h2 className="text-xl font-semibold">My Tasks</h2>
-
-          {isLoadingTasks ? (
-            <div className="flex items-center justify-center h-48">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : tasks.length === 0 ? (
-            <Card>
-              <CardContent className="p-12 text-center text-muted-foreground">
-                <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No tasks assigned yet.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {tasks.map((task) => (
-                <Card key={task.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge className={getStatusColor(task.completed ? "completed" : "in-progress")}>
-                            {getStatusIcon(task.completed ? "completed" : "in-progress")}
-                            <span className="ml-1">{task.completed ? "Completed" : "In Progress"}</span>
-                          </Badge>
-                        </div>
-                        <h3 className="font-medium text-lg">{task.task}</h3>
-                        {task.due_date && (
-                          <div className="flex items-center gap-2 mt-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm text-muted-foreground">
-                              Due: {new Date(task.due_date).toLocaleDateString()}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      {!task.completed && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={completeTask.isPending}
-                          onClick={() => completeTask.mutate(task.id)}
-                        >
-                          {completeTask.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            "Mark as Done"
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+          <StudentActionItemsSection />
         </TabsContent>
 
         {/* ── Messages Tab ── */}

@@ -13,7 +13,6 @@ import {
   Calendar,
   Upload,
   MessageSquare,
-  CheckCircle,
   AlertCircle,
   Clock,
   TrendingUp,
@@ -31,7 +30,7 @@ interface DashboardData {
   essays: { completed: number; total: number }
   recommendations: { completed: number; total: number }
   upcomingDeadlines: { id: string; title: string; date: string; daysLeft: number; urgency: string }[]
-  pendingTasks: { id: string; task: string; due_date: string | null }[]
+  pendingTasks: { id: string; task: string; due_date: string | null; color: string }[]
 }
 
 const StudentDashboard = () => {
@@ -69,13 +68,13 @@ const StudentDashboard = () => {
         .order('deadline_date', { ascending: true })
 
       // Fetch pending tasks
-      const { data: tasks } = await supabase
+      const { data: tasks } = await (supabase
         .from('tasks')
-        .select('id, task, due_date')
+        .select('id, task, due_date, color')
         .eq('student_id', user.id)
         .eq('completed', false)
         .order('due_date', { ascending: true })
-        .limit(5)
+        .limit(5) as any)
 
       // Compute upcoming deadlines from applications
       const today = new Date()
@@ -112,10 +111,11 @@ const StudentDashboard = () => {
           total: (apps || []).reduce((sum, a) => sum + (a.recommendations_requested ?? 0), 0),
         },
         upcomingDeadlines,
-        pendingTasks: (tasks || []).map(t => ({
+        pendingTasks: (tasks || []).map((t: any) => ({
           id: t.id,
           task: t.task,
           due_date: t.due_date,
+          color: t.color ?? 'blue',
         })),
       })
     } catch (error: any) {
@@ -268,12 +268,17 @@ const StudentDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Pending Tasks */}
+        {/* Action Items */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" />
-              Pending Tasks
+              Action Items
+              {(data?.pendingTasks.length ?? 0) > 0 && (
+                <span className="ml-1 inline-flex items-center rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                  {data!.pendingTasks.length} pending
+                </span>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -282,19 +287,42 @@ const StudentDashboard = () => {
                 No pending tasks — you're all caught up!
               </p>
             ) : (
-              <div className="space-y-3">
-                {data?.pendingTasks.map(task => (
-                  <div key={task.id} className="p-3 rounded-lg bg-muted/30 border border-muted">
-                    <p className="text-sm font-medium text-foreground">{task.task}</p>
-                    {task.due_date && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Due: {new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      </p>
-                    )}
-                  </div>
-                ))}
+              <div className="space-y-2">
+                {data?.pendingTasks.map((task) => {
+                  const COLOR_MAP: Record<string, string> = {
+                    blue:   "bg-blue-500/10 border-blue-300 text-blue-700",
+                    purple: "bg-purple-500/10 border-purple-300 text-purple-700",
+                    green:  "bg-green-500/10 border-green-300 text-green-700",
+                    orange: "bg-orange-500/10 border-orange-300 text-orange-700",
+                    pink:   "bg-pink-500/10 border-pink-300 text-pink-700",
+                    yellow: "bg-yellow-500/10 border-yellow-300 text-yellow-700",
+                  }
+                  const color = COLOR_MAP[task.color] ?? COLOR_MAP.blue
+                  return (
+                    <div key={task.id} className={`flex items-start gap-3 p-3 rounded-xl border ${color}`}>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium leading-snug">{task.task}</p>
+                        {task.due_date && (
+                          <p className="text-xs opacity-70 mt-0.5">
+                            Due: {new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
+            <div className="mt-4 pt-3 border-t border-border">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-xs text-muted-foreground"
+                onClick={() => navigate('/student-personal-area')}
+              >
+                Manage all tasks in My Work →
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -310,7 +338,7 @@ const StudentDashboard = () => {
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <Button
               id="tour-upload-essay"
               variant="outline"
@@ -323,10 +351,6 @@ const StudentDashboard = () => {
             <Button variant="outline" className="h-16 flex-col gap-2" onClick={() => navigate('/student-personal-area')}>
               <FileText className="h-5 w-5" />
               View Feedback
-            </Button>
-            <Button variant="outline" className="h-16 flex-col gap-2">
-              <CheckCircle className="h-5 w-5" />
-              Check Tasks
             </Button>
             <Button variant="outline" className="h-16 flex-col gap-2" onClick={() => navigate('/student-messages')}>
               <MessageSquare className="h-5 w-5" />

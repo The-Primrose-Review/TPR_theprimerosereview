@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { useApplications } from "@/hooks/useApplications";
 import {
   Select,
@@ -28,14 +27,25 @@ import {
   Plus,
   School,
   ClipboardList,
+  Globe,
 } from "lucide-react";
 
+const APPLICATION_PLATFORMS = [
+  { value: "common-app",   label: "Common App",              description: "Used by 900+ colleges (default)" },
+  { value: "coalition",    label: "Coalition Application",   description: "Partnered with 150+ colleges" },
+  { value: "uc-app",       label: "UC Application",          description: "California UC system" },
+  { value: "apply-texas",  label: "ApplyTexas",              description: "Texas public universities" },
+  { value: "direct",       label: "Direct Application",      description: "School-specific portal" },
+  { value: "ucas",         label: "UCAS",                    description: "UK university applications" },
+  { value: "other",        label: "Other",                   description: "Another platform" },
+];
+
 const APPLICATION_TYPES = [
-  { value: "early-decision", label: "Early Decision (ED)", description: "Binding — first choice school" },
-  { value: "early-action", label: "Early Action (EA)", description: "Non-binding early application" },
-  // { value: "", label: "Regular Decision", description: "Standard application round" },
-  { value: "ucas", label: "UCAS", description: "UK university applications" },
-  { value: "rolling", label: "Rolling Admission", description: "Applications reviewed as received" },
+  { value: "early-decision",          label: "Early Decision (ED)",           description: "Binding — first choice school" },
+  { value: "early-action",            label: "Early Action (EA)",             description: "Non-binding early application" },
+  { value: "restrictive-early-action",label: "Restrictive Early Action (REA)",description: "Early, limits other early apps" },
+  { value: "regular-decision",        label: "Regular Decision (RD)",         description: "Standard application round" },
+  { value: "rolling",                 label: "Rolling Admission",             description: "Applications reviewed as received" },
 ];
 
 const STATUS_OPTIONS = [
@@ -61,6 +71,7 @@ const AddApplication = () => {
   const [form, setForm] = useState({
     school_name: "",
     program: "",
+    application_platform: "common-app",
     application_type: "",
     deadline_date: "",
     status: "not-started",
@@ -108,6 +119,7 @@ const AddApplication = () => {
         student_id: "", // overwritten by hook
         school_name: form.school_name,
         program: form.program || null,
+        application_platform: form.application_platform || null,
         application_type: form.application_type,
         deadline_date: form.deadline_date,
         status: form.status,
@@ -119,7 +131,7 @@ const AddApplication = () => {
         urgent: isUrgent(),
         ai_score_avg: null,
         notes: form.notes || null,
-      });
+      } as any);
       setSubmitted(true);
       celebrate('new_application');
     } catch (error) {
@@ -152,6 +164,7 @@ const AddApplication = () => {
                 setForm({
                   school_name: "",
                   program: "",
+                  application_platform: "common-app",
                   application_type: "",
                   deadline_date: "",
                   status: "not-started",
@@ -176,7 +189,6 @@ const AddApplication = () => {
     );
   }
 
-  const completion = computeCompletion();
   const urgent = isUrgent();
 
   // ── Form ───────────────────────────────────────────────────
@@ -227,6 +239,31 @@ const AddApplication = () => {
                   value={form.program}
                   onChange={(e) => updateForm("program", e.target.value)}
                 />
+              </div>
+            </div>
+
+            {/* Application Platform */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                Application Platform <span className="text-destructive">*</span>
+              </Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {APPLICATION_PLATFORMS.map((platform) => (
+                  <button
+                    key={platform.value}
+                    type="button"
+                    onClick={() => updateForm("application_platform", platform.value)}
+                    className={`text-left p-3 rounded-lg border transition-all ${
+                      form.application_platform === platform.value
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50 hover:bg-muted/50"
+                    }`}
+                  >
+                    <p className="font-medium text-sm text-foreground">{platform.label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{platform.description}</p>
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -421,7 +458,7 @@ const AddApplication = () => {
         </Card>
 
         {/* Completion Preview */}
-        <Card className="bg-primary/5 border-primary/20">
+        {/* <Card className="bg-primary/5 border-primary/20">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -441,7 +478,7 @@ const AddApplication = () => {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Submit */}
         <div className="flex gap-3">

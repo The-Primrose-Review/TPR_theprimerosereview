@@ -64,10 +64,13 @@ const SubmitEssay = () => {
   const slotLabel     = searchParams.get("label");
   const slotPrompt    = searchParams.get("prompt");
   const slotWordLimit = searchParams.get("wordLimit");
+  const urlDraftId    = searchParams.get("draftId");
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess]       = useState(false);
-  const [counselorId, setCounselorId]   = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting]   = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isSuccess, setIsSuccess]         = useState(false);
+  const [counselorId, setCounselorId]     = useState<string | null>(null);
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(urlDraftId);
 
   // Form fields
   const [title, setTitle]               = useState(slotLabel ?? "");
@@ -102,6 +105,76 @@ const SubmitEssay = () => {
     };
     fetchCounselor();
   }, []);
+
+  // Load draft if draftId is in the URL
+  useEffect(() => {
+    if (!urlDraftId) return;
+    const loadDraft = async () => {
+      const { data, error } = await (supabase
+        .from("essay_feedback")
+        .select("essay_title, essay_prompt, essay_content, target_school, word_limit, status")
+        .eq("id", urlDraftId)
+        .single() as any);
+      if (error || !data || data.status !== "draft") return;
+      setTitle(data.essay_title ?? "");
+      setPrompt(data.essay_prompt ?? "");
+      setContent(data.essay_content ?? "");
+      setTargetSchool(data.target_school ?? "");
+      const wl = data.word_limit as number | null;
+      if (wl && WORD_LIMIT_OPTIONS.includes(wl)) {
+        setWordLimit(wl);
+      } else if (wl) {
+        setWordLimit(null);
+        setCustomWordLimit(String(wl));
+      }
+    };
+    loadDraft();
+  }, [urlDraftId]);
+
+  // ── Save draft ────────────────────────────────────────────
+  const handleSaveDraft = async () => {
+    if (!title.trim()) { toast.error("Please add a title before saving"); return; }
+
+    setIsSavingDraft(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const payload = {
+        student_id:    user.id,
+        counselor_id:  counselorId,
+        essay_title:   title.trim(),
+        essay_prompt:  prompt.trim() || null,
+        essay_content: content.trim(),
+        target_school: targetSchool.trim() || null,
+        word_limit:    effectiveWordLimit || null,
+        status:        "draft",
+      };
+
+      if (currentDraftId) {
+        const { error } = await (supabase
+          .from("essay_feedback")
+          .update(payload as any)
+          .eq("id", currentDraftId) as any);
+        if (error) throw error;
+      } else {
+        const { data: draft, error } = await (supabase
+          .from("essay_feedback")
+          .insert(payload as any)
+          .select("id")
+          .single() as any);
+        if (error) throw error;
+        setCurrentDraftId(draft.id);
+      }
+
+      toast.success("Draft saved! Continue anytime from My Work → Essays.");
+      navigate("/student-personal-area?tab=essays");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save draft");
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
 
   // ── Text selection handler ────────────────────────────────
   const handleSelectionChange = () => {
@@ -189,26 +262,43 @@ const SubmitEssay = () => {
         ? `${title.trim()} — ${targetSchool.trim()}`
         : title.trim();
 
-      const { data: essayData, error: essayError } = await supabase
-        .from("essay_feedback")
-        .insert({
-          student_id:    user.id,
-          counselor_id:  counselorId,
-          essay_title:   essayTitle,
-          essay_prompt:  prompt.trim() || null,
-          essay_content: content.trim(),
-          status:        "pending",
-        })
-        .select()
-        .single();
+      let essayId: string | null = currentDraftId;
 
-      if (essayError) throw essayError;
+      if (currentDraftId) {
+        // Promote existing draft to submitted
+        const { error } = await (supabase
+          .from("essay_feedback")
+          .update({
+            essay_title:   essayTitle,
+            essay_prompt:  prompt.trim() || null,
+            essay_content: content.trim(),
+            target_school: targetSchool.trim() || null,
+            status:        "pending",
+          } as any)
+          .eq("id", currentDraftId) as any);
+        if (error) throw error;
+      } else {
+        const { data: essayData, error: essayError } = await supabase
+          .from("essay_feedback")
+          .insert({
+            student_id:    user.id,
+            counselor_id:  counselorId,
+            essay_title:   essayTitle,
+            essay_prompt:  prompt.trim() || null,
+            essay_content: content.trim(),
+            status:        "pending",
+          })
+          .select()
+          .single();
+        if (essayError) throw essayError;
+        essayId = essayData?.id ?? null;
+      }
 
-      if (slotId && essayData?.id) {
+      if (slotId && essayId) {
         const { error: slotError } = await supabase
           .from("application_essays")
           .update({
-            essay_feedback_id: essayData.id,
+            essay_feedback_id: essayId,
             status:            "draft",
             updated_at:        new Date().toISOString(),
           })
@@ -552,7 +642,26 @@ const SubmitEssay = () => {
               <Button type="button" variant="outline" className="flex-1" onClick={() => navigate(-1)}>
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1" disabled={isSubmitting || isOverLimit}>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 border-primary/30 text-primary hover:bg-primary/5"
+                disabled={isSavingDraft || isSubmitting}
+                onClick={handleSaveDraft}
+              >
+                {isSavingDraft ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    Save & Continue Later
+                  </>
+                )}
+              </Button>
+              <Button type="submit" className="flex-1" disabled={isSubmitting || isSavingDraft || isOverLimit}>
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
