@@ -61,22 +61,10 @@ const StudentDashboard = () => {
         .eq('user_id', user.id)
         .single()
 
-      // Fetch essays
-      const { data: essays } = await supabase
-        .from('essay_feedback')
-        .select('status')
-        .eq('student_id', user.id)
-
-      // Fetch recommendations
-      const { data: recs } = await supabase
-        .from('recommendation_requests')
-        .select('status')
-        .eq('student_id', user.id)
-
-      // Fetch applications
+      // Fetch applications — essays and rec counts live here
       const { data: apps } = await supabase
         .from('applications')
-        .select('school_name, application_type, deadline_date, status')
+        .select('school_name, application_type, deadline_date, status, required_essays, completed_essays, recommendations_requested, recommendations_submitted')
         .eq('student_id', user.id)
         .order('deadline_date', { ascending: true })
 
@@ -116,12 +104,12 @@ const StudentDashboard = () => {
           total: (apps || []).length,
         },
         essays: {
-          completed: (essays || []).filter(e => e.status === 'sent').length,
-          total: (essays || []).length,
+          completed: (apps || []).reduce((sum, a) => sum + (a.completed_essays ?? 0), 0),
+          total: (apps || []).reduce((sum, a) => sum + (a.required_essays ?? 0), 0),
         },
         recommendations: {
-          completed: (recs || []).filter(r => r.status === 'sent').length,
-          total: (recs || []).length,
+          completed: (apps || []).reduce((sum, a) => sum + (a.recommendations_submitted ?? 0), 0),
+          total: (apps || []).reduce((sum, a) => sum + (a.recommendations_requested ?? 0), 0),
         },
         upcomingDeadlines,
         pendingTasks: (tasks || []).map(t => ({
