@@ -151,7 +151,7 @@ const AddSlotForm = ({
 
   return (
     <div className="border border-dashed border-border rounded-xl p-4 space-y-3 bg-muted/30">
-      <p className="text-sm font-semibold">New Essay Slot</p>
+      <p className="text-sm font-semibold">New Essay</p>
       <div>
         <label className="text-xs text-muted-foreground mb-1 block">Label *</label>
         <Input
@@ -197,7 +197,7 @@ const AddSlotForm = ({
           }
         >
           {createSlot.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Plus className="h-3.5 w-3.5 mr-1" />}
-          Add Slot
+          Add Essay
         </Button>
         <Button size="sm" variant="ghost" onClick={onDone}>Cancel</Button>
       </div>
@@ -437,7 +437,6 @@ export const ApplicationDetailModal = ({
 }) => {
   const navigate = useNavigate();
   const [showAddSlot, setShowAddSlot]             = useState(false);
-  const [showAddRec, setShowAddRec]               = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [submitNotes, setSubmitNotes]             = useState("");
 
@@ -652,7 +651,7 @@ export const ApplicationDetailModal = ({
                   size="sm"
                   variant="outline"
                   className="h-8 text-xs"
-                  onClick={() => setShowAddRec(true)}
+                  onClick={() => { onClose(); navigate('/student-recommendation-letters?step=form'); }}
                 >
                   <Plus className="h-3.5 w-3.5 mr-1" />Add
                 </Button>
@@ -678,8 +677,8 @@ export const ApplicationDetailModal = ({
                   <p className="text-xs text-muted-foreground mb-3">
                     Add the referees this application requires.
                   </p>
-                  <Button size="sm" variant="outline" onClick={() => setShowAddRec(true)}>
-                    <Plus className="h-3.5 w-3.5 mr-1.5" />Add Referee
+                  <Button size="sm" variant="outline" onClick={() => { onClose(); navigate('/student-recommendation-letters?step=form'); }}>
+                    <Plus className="h-3.5 w-3.5 mr-1.5" />Request Letter
                   </Button>
                 </div>
               ) : (
@@ -690,14 +689,6 @@ export const ApplicationDetailModal = ({
                 </div>
               )}
 
-              {showAddRec && (
-                <AddRecForm
-                  studentId={application.student_id}
-                  applicationId={application.id}
-                  addRecommendation={addRecommendation}
-                  onDone={() => setShowAddRec(false)}
-                />
-              )}
             </div>
           </div>
         </ScrollArea>

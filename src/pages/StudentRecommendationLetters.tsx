@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useCelebration } from "@/hooks/useCelebration";
 import { CelebrationOverlay } from "@/components/CelebrationOverlay";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -92,7 +93,10 @@ const getStatusBadge = (status: string) => {
 const StudentRecommendationLetters = () => {
   const { requests, isLoading, error, createRequest } = useStudentRecommendations();
   const { celebrate, activeEvent } = useCelebration();
-  const [currentStep, setCurrentStep] = useState<"list" | "form" | "view">("list");
+  const [searchParams] = useSearchParams();
+  const [currentStep, setCurrentStep] = useState<"list" | "form" | "view">(
+    searchParams.get("step") === "form" ? "form" : "list"
+  );
   const [selectedRequest, setSelectedRequest] = useState<RecommendationRequest | null>(null);
   const [formData, setFormData] = useState(INITIAL_FORM);
 

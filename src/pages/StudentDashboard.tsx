@@ -319,7 +319,7 @@ const StudentDashboard = () => {
                 variant="ghost"
                 size="sm"
                 className="w-full text-xs text-muted-foreground"
-                onClick={() => navigate('/student-personal-area')}
+                onClick={() => navigate('/student-personal-area?tab=tasks')}
               >
                 Manage all tasks in My Work →
               </Button>

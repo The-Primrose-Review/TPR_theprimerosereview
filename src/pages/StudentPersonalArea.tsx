@@ -76,7 +76,8 @@ const StudentPersonalArea = () => {
     getFeedbackForEssay,
   } = useStudentPersonalArea();
 
-  const [activeTab, setActiveTab]           = useState("essays");
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab]           = useState(() => searchParams.get("tab") ?? "essays");
   const [selectedEssay, setSelectedEssay]   = useState<EssayFeedback | null>(null);
 
   const { applications, isLoading: isLoadingApplications } = useApplications();
