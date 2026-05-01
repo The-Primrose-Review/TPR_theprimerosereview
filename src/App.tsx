@@ -67,7 +67,19 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, isAuthenticated } = useAuthState();
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
   const noSidebarRoutes = ['/', '/auth', '/demo', '/product-demo', '/demo-maker'];
-  const isStudentRoute = location.pathname.startsWith('/student') || location.pathname === '/submit-essay' || location.pathname === '/personal-essay' || location.pathname === '/student-feedback' || location.pathname === '/add-application' || location.pathname === '/student-recommendation-letters' || location.pathname === '/student-messages';
+  // const isStudentRoute = location.pathname.startsWith('/student') || location.pathname === '/submit-essay' || location.pathname === '/personal-essay' || location.pathname === '/student-feedback' || location.pathname === '/add-application' || location.pathname === '/student-recommendation-letters' || location.pathname === '/student-messages';
+  const isStudentRoute =
+  [
+    '/student-dashboard',
+    '/student-personal-area',
+    '/student-stats',
+    '/student-recommendation-letters',
+    '/student-messages',
+  ].includes(location.pathname) ||
+  location.pathname === '/submit-essay' ||
+  location.pathname === '/personal-essay' ||
+  location.pathname === '/student-feedback' ||
+  location.pathname === '/add-application';
   const showSidebar = !noSidebarRoutes.includes(location.pathname);
 
   useEffect(() => {
