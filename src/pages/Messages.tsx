@@ -27,7 +27,6 @@ import {
   AlertCircle,
   AlertTriangle,
   Users,
-  Bell,
   Lightbulb,
   MoreHorizontal,
   Pin,
@@ -384,10 +383,6 @@ const Messages = () => {
           <p className="text-muted-foreground">Communicate with students and parents</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Bell className="h-4 w-4 mr-2" />
-            Notifications
-          </Button>
           <Button variant="outline" size="sm" onClick={() => setShowBulkMessage(true)}>
             <Users className="h-4 w-4 mr-2" />
             Bulk Message
@@ -396,7 +391,7 @@ const Messages = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -439,19 +434,6 @@ const Messages = () => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-secondary/10 rounded-lg">
-                <Lightbulb className="h-5 w-5 text-secondary-foreground" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Templates Used</p>
-                <p className="text-2xl font-bold text-foreground">12</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Main Layout */}

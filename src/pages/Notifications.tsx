@@ -160,15 +160,15 @@ const Notifications = () => {
         .in("student_id", studentIds);
 
       essays?.forEach((essay) => {
-        if (essay.status !== "draft") return;
+        if (essay.status !== "pending") return;
         const student = profileMap[essay.student_id];
         const studentName = student?.full_name ?? "Unknown Student";
         derived.push({
           id: `essay-${essay.id}`,
           type: "essay",
           priority: "important",
-          title: "Essay Feedback Draft",
-          description: `${essay.essay_title} — feedback ready to review and send`,
+          title: "New Essay Submitted",
+          description: `${essay.essay_title} — submitted for your review`,
           studentName,
           studentId: essay.student_id,
           studentAvatar: student?.avatar_url,

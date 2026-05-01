@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { GraduationCap, Users, FileText, Calendar, BarChart3, MessageSquare, Bell, UserCircle, BookOpen, Award, Home, PartyPopper, Settings, Building2, ShieldAlert, Sparkles } from "lucide-react";
+import { GraduationCap, Users, FileText, Calendar, BarChart3, MessageSquare, Bell, UserCircle, BookOpen, Award, Home, PartyPopper, Settings, Building2, ShieldAlert } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
@@ -26,11 +26,13 @@ const mainItems: NavItem[] = [{
   title: "Essays",
   url: "/essays",
   icon: FileText
-}, {
-  title: "Essay Toolkit",
-  url: "/essay-toolkit",
-  icon: Sparkles
-}, {
+},
+// {
+//   title: "Essay Toolkit",
+//   url: "/essay-toolkit",
+//   icon: Sparkles
+// },
+{
   title: "Applications",
   url: "/applications",
   icon: Calendar

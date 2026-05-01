@@ -184,7 +184,7 @@ useEffect(() => {
       const studentRecs = recMap.get(app.student_id) ?? [];
 
       const essaysDone = studentEssays.filter(
-        (e) => e.status === "sent"
+        (e) => ["sent", "read", "approved"].includes(e.status)
       ).length;
 
       const recsDone = studentRecs.filter(
