@@ -65,6 +65,7 @@ const SubmitEssay = () => {
   const slotPrompt    = searchParams.get("prompt");
   const slotWordLimit = searchParams.get("wordLimit");
   const urlDraftId    = searchParams.get("draftId");
+  const urlSchoolName = searchParams.get("schoolName");
 
   const [isSubmitting, setIsSubmitting]   = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
@@ -76,7 +77,7 @@ const SubmitEssay = () => {
   const [title, setTitle]               = useState(slotLabel ?? "");
   const [prompt, setPrompt]             = useState(slotPrompt ?? "");
   const [content, setContent]           = useState("");
-  const [targetSchool, setTargetSchool] = useState("");
+  const [targetSchool, setTargetSchool] = useState(urlSchoolName ?? "");
   const [wordLimit, setWordLimit]       = useState<number | null>(
     slotWordLimit ? parseInt(slotWordLimit) : null
   );
@@ -471,9 +472,14 @@ const SubmitEssay = () => {
                   </div>
                 </div>
 
-                {!slotId && (
-                  <div className="space-y-2">
-                    <Label htmlFor="targetSchool">Target School</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="targetSchool">Target School</Label>
+                  {slotId && urlSchoolName ? (
+                    <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-muted/40 text-sm">
+                      <School className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-foreground">{urlSchoolName}</span>
+                    </div>
+                  ) : (
                     <div className="relative">
                       <School className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -484,8 +490,8 @@ const SubmitEssay = () => {
                         className="pl-10"
                       />
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </CardContent>
             </Card>
 

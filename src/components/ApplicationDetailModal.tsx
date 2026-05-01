@@ -351,79 +351,6 @@ const RecCard = ({
   </div>
 );
 
-const AddRecForm = ({
-  studentId,
-  applicationId,
-  addRecommendation,
-  onDone,
-}: {
-  studentId: string;
-  applicationId: string;
-  addRecommendation: ReturnType<typeof useApplicationRecommendations>["addRecommendation"];
-  onDone: () => void;
-}) => {
-  const [name, setName]   = useState("");
-  const [role, setRole]   = useState("");
-  const [email, setEmail] = useState("");
-
-  return (
-    <div className="border border-dashed border-border rounded-xl p-4 space-y-3 bg-muted/30">
-      <p className="text-sm font-semibold">New Recommendation Request</p>
-      <div>
-        <label className="text-xs text-muted-foreground mb-1 block">Referee Name *</label>
-        <Input
-          placeholder='e.g. "Dr. Sarah Johnson"'
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="h-8 text-sm"
-        />
-      </div>
-      <div>
-        <label className="text-xs text-muted-foreground mb-1 block">Role / Title (optional)</label>
-        <Input
-          placeholder='e.g. "AP Chemistry Teacher"'
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-          className="h-8 text-sm"
-        />
-      </div>
-      <div>
-        <label className="text-xs text-muted-foreground mb-1 block">Email (optional)</label>
-        <Input
-          type="email"
-          placeholder="teacher@school.edu"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="h-8 text-sm"
-        />
-      </div>
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          disabled={!name.trim() || addRecommendation.isPending}
-          onClick={() =>
-            addRecommendation.mutate(
-              {
-                student_id:   studentId,
-                referee_name: name.trim(),
-                referee_role: role.trim() || undefined,
-                teacher_email: email.trim() || undefined,
-              },
-              { onSuccess: onDone }
-            )
-          }
-        >
-          {addRecommendation.isPending
-            ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-            : <Plus className="h-3.5 w-3.5 mr-1" />}
-          Add
-        </Button>
-        <Button size="sm" variant="ghost" onClick={onDone}>Cancel</Button>
-      </div>
-    </div>
-  );
-};
-
 // ─── Main Modal ────────────────────────────────────────────────────────────────
 
 export const ApplicationDetailModal = ({
@@ -451,7 +378,6 @@ export const ApplicationDetailModal = ({
   const {
     recommendations,
     isLoading: isLoadingRecs,
-    addRecommendation,
     updateRecStatus,
     sentCount,
     totalCount,
@@ -472,7 +398,7 @@ export const ApplicationDetailModal = ({
   const handleStartWriting = (slot: ApplicationEssaySlotWithDraft) => {
     onClose();
     navigate(
-      `/submit-essay?slotId=${slot.id}&applicationId=${application.id}&label=${encodeURIComponent(slot.essay_label)}${slot.essay_prompt ? `&prompt=${encodeURIComponent(slot.essay_prompt)}` : ""}${slot.word_limit ? `&wordLimit=${slot.word_limit}` : ""}`
+      `/submit-essay?slotId=${slot.id}&applicationId=${application.id}&label=${encodeURIComponent(slot.essay_label)}&schoolName=${encodeURIComponent(application.school_name)}${slot.essay_prompt ? `&prompt=${encodeURIComponent(slot.essay_prompt)}` : ""}${slot.word_limit ? `&wordLimit=${slot.word_limit}` : ""}`
     );
   };
 
@@ -686,7 +612,7 @@ export const ApplicationDetailModal = ({
                     <div key={i} className="h-14 rounded-xl bg-muted animate-pulse" />
                   ))}
                 </div>
-              ) : recommendations.length === 0 && !showAddRec ? (
+              ) : recommendations.length === 0 ? (
                 <div className="border border-dashed border-border rounded-xl p-6 text-center">
                   <Users className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
                   <p className="text-xs font-medium mb-1">No recommendations added yet</p>
