@@ -154,7 +154,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
         </div>
 
         {/* Demo Navigation - floating button */}
-        <DemoNavigation />
+        {/* <DemoNavigation /> */}
       </div>
     </SidebarProvider>
   );
