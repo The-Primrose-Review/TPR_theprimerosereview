@@ -55,6 +55,7 @@ import OnboardingSuccess from "./pages/OnboardingSuccess";
 import DemoMaker from "./pages/DemoMaker";
 import ProductDemo from "./pages/ProductDemo";
 import EssayToolkit from "./pages/EssayToolkit";
+import PersonalEssay from "./pages/PersonalEssay";
 
 const queryClient = new QueryClient();
 
@@ -65,7 +66,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, isAuthenticated } = useAuthState();
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
   const noSidebarRoutes = ['/', '/auth', '/demo', '/product-demo', '/demo-maker'];
-  const isStudentRoute = location.pathname.startsWith('/student') || location.pathname === '/submit-essay' || location.pathname === '/add-application' || location.pathname === '/student-recommendation-letters' || location.pathname === '/student-messages';
+  const isStudentRoute = location.pathname.startsWith('/student') || location.pathname === '/submit-essay' || location.pathname === '/personal-essay' || location.pathname === '/add-application' || location.pathname === '/student-recommendation-letters' || location.pathname === '/student-messages';
   const showSidebar = !noSidebarRoutes.includes(location.pathname);
 
   useEffect(() => {
@@ -309,6 +310,14 @@ const App = () => {
             <AppLayout>
               <ProtectedRoute allowedRoles={['student']}>
                 <StudentMessages />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+
+          <Route path="/personal-essay" element={
+            <AppLayout>
+              <ProtectedRoute allowedRoles={['student']}>
+                <PersonalEssay />
               </ProtectedRoute>
             </AppLayout>
           } />

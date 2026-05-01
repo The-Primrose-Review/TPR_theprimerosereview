@@ -20,6 +20,7 @@ import {
   Award,
   Loader2,
   MapPin,
+  Sparkles,
 } from "lucide-react";
 import { StudentTour, startStudentTour } from "@/components/StudentTour";
 
@@ -338,7 +339,7 @@ const StudentDashboard = () => {
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
             <Button
               id="tour-upload-essay"
               variant="outline"
@@ -347,6 +348,14 @@ const StudentDashboard = () => {
             >
               <Upload className="h-5 w-5" />
               Upload Essay
+            </Button>
+            <Button
+              variant="outline"
+              className="h-16 flex-col gap-2 border-primary/30 hover:bg-primary/5"
+              onClick={() => navigate('/personal-essay')}
+            >
+              <Sparkles className="h-5 w-5 text-primary" />
+              Personal Essay
             </Button>
             <Button variant="outline" className="h-16 flex-col gap-2" onClick={() => navigate('/student-personal-area')}>
               <FileText className="h-5 w-5" />
