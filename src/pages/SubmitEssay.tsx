@@ -124,6 +124,7 @@ const SubmitEssay = () => {
 }, []);
 
   useEffect(() => {
+    
     if (!urlDraftId) return;
     const loadDraft = async () => {
       const { data, error } = await (supabase
