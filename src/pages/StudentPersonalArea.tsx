@@ -13,6 +13,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, GraduationCap } from "lucide-react";
 import { useApplications } from "@/hooks/useApplications";
 import { ApplicationDetailModal } from "@/components/ApplicationDetailModal";
+import jsPDF from "jspdf";
 import type { ApplicationWithProfile } from "@/hooks/useApplications";
 
 import {
@@ -147,6 +148,21 @@ const StudentPersonalArea = () => {
       segments.push(<span key="rest">{paraText.slice(lastIdx)}</span>);
     return segments;
   };
+  const handleDownloadEssay = (essay: EssayFeedback) => {
+  const doc = new jsPDF();
+
+  doc.setFontSize(14);
+  doc.text(essay.essay_title, 10, 15);
+
+  doc.setFontSize(10);
+  doc.text(
+    doc.splitTextToSize(essay.essay_content, 180),
+    10,
+    25
+  );
+
+  doc.save(`${essay.essay_title}.pdf`);
+};
 
   // ── Render ────────────────────────────────────────────────
   return (
@@ -171,10 +187,25 @@ const StudentPersonalArea = () => {
         <TabsContent value="essays" className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">My Essays</h2>
-            <Button onClick={() => navigate('/submit-essay')}>
+            {/* <Button onClick={() => navigate('/submit-essay')}>
               <Upload className="h-4 w-4 mr-2" />
               Upload New Essay
             </Button>
+            <Button variant="outline" onClick={() => navigate('/personal-essay')}>
+              <Upload className="h-4 w-4 mr-2" />
+              Upload Personal Essay
+            </Button> */}
+            <div className="flex gap-2">
+              <Button onClick={() => navigate('/submit-essay')}>
+                <Upload className="h-4 w-4 mr-2" />
+                Upload New Essay
+              </Button>
+
+              <Button onClick={() => navigate('/personal-essay')}>
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Personal Essay
+              </Button>
+            </div>
           </div>
 
           {isLoadingEssays ? (
@@ -248,12 +279,32 @@ const StudentPersonalArea = () => {
                         </Button>
                       ) : (
                         <>
-                          <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
+                          {/* <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
                             View Details
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
+                          </Button> */}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedEssay(essay);
+                              }}
+                            >
+                              View Details
+                            </Button>
+                          {/* <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
                             Download
-                          </Button>
+                          </Button> */}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownloadEssay(essay);
+                              }}
+                            >
+                              Download
+                            </Button>
                         </>
                       )}
                     </div>
@@ -380,7 +431,9 @@ const StudentPersonalArea = () => {
                   Send a message to your counselor for help with essays, applications, or any
                   questions.
                 </p>
-                <Button>Send Your First Message</Button>
+                <Button onClick={() => navigate('/student-messages')}>
+                  Check if you have messages
+                </Button>
               </div>
             </CardContent>
           </Card>

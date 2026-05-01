@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
   Search,
   Filter,
@@ -66,6 +68,8 @@ const getStatusColor = (status: string) => {
     default:           return "outline";
   }
 };
+
+
 
 const getApplicationTypeLabel = (type: string) => {
   const labels: Record<string, string> = {
@@ -231,6 +235,39 @@ const Applications = () => {
     setSendingReminderFor(null);
   };
 
+  const handleExportPDF = () => {
+  const doc = new jsPDF();
+
+  const tableData = filtered.map((app) => [
+    app.profiles?.full_name || "—",
+    app.school_name,
+    app.program || "-",
+    app.application_type,
+    app.deadline_date,
+    `${app.completed_essays}/${app.required_essays}`,
+    `${app.recommendations_submitted}/${app.recommendations_requested}`,
+    app.status,
+    `${app.completion_percentage}%`,
+  ]);
+
+  autoTable(doc, {
+    head: [[
+      "Student",
+      "School",
+      "Program",
+      "Type",
+      "Deadline",
+      "Essays",
+      "Recs",
+      "Status",
+      "Progress"
+    ]],
+    body: tableData,
+  });
+
+  doc.save("applications.pdf");
+};
+
   // ── Render ────────────────────────────────────────────────
   return (
     <div className="p-6 space-y-6">
@@ -241,7 +278,7 @@ const Applications = () => {
           <p className="text-muted-foreground">Track and manage all student college applications</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleExportPDF}>
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
@@ -322,7 +359,7 @@ const Applications = () => {
               </SelectContent>
             </Select>
 
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleExportPDF}>
               <Filter className="h-4 w-4" />
             </Button>
           </div>
@@ -341,7 +378,7 @@ const Applications = () => {
                       : <Send className="h-4 w-4 mr-2" />}
                     Send Reminders
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={handleExportPDF}>
                     <Download className="h-4 w-4 mr-2" />
                     Export Selected
                   </Button>

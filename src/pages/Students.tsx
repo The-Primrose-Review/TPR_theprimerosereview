@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
   Search,
   Filter,
@@ -329,6 +331,42 @@ const Students = () => {
       (gpaFilter === 'low' && (student.gpa ?? 0) < 3.0)
     return matchesSearch && matchesStatus && matchesGPA
   })
+
+  const handleExportStudentsPDF = () => {
+  const doc = new jsPDF();
+
+  const tableData = filteredStudents.map((student) => [
+    student.name,
+    student.email || "-",
+    student.school_name || "-",
+    student.gpa ?? "-",
+    student.sat_score ? `SAT: ${student.sat_score}` :
+    student.act_score ? `ACT: ${student.act_score}` : "-",
+    `${student.essaysSubmitted}/${student.totalEssays}`,
+    `${student.recommendationsSubmitted}/${student.recommendationsRequested}`,
+    student.upcomingDeadlines,
+    `${student.completionPercentage}%`,
+    student.status,
+  ]);
+
+  autoTable(doc, {
+    head: [[
+      "Name",
+      "Email",
+      "School",
+      "GPA",
+      "Test Score",
+      "Essays",
+      "Recs",
+      "Deadlines",
+      "Progress",
+      "Status"
+    ]],
+    body: tableData,
+  });
+
+  doc.save("students_report.pdf");
+};
 
   // ─── Student Detail Dialog (shared between list + grid) ──────
   const StudentDialog = ({ student }: { student: Student }) => {
@@ -663,12 +701,12 @@ const Students = () => {
             {students.length} student{students.length !== 1 ? 's' : ''} on your roster
           </p>
         </div>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={handleExportStudentsPDF}>
           <Download className="h-4 w-4 mr-2" />
           Export Reports
         </Button>
       </div>
-
+      
       {/* Search and Filters */}
       <Card>
         <CardContent className="p-6">
@@ -705,7 +743,7 @@ const Students = () => {
                   <SelectItem value="low">Below 3.0</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleExportStudentsPDF}>
                 <Filter className="h-4 w-4" />
               </Button>
               <ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as 'list' | 'grid')}>
