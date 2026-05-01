@@ -96,17 +96,33 @@ const SubmitEssay = () => {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [isAnalysing, setIsAnalysing]       = useState(false);
 
+  
   useEffect(() => {
-    const fetchCounselor = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: anyRole } = await supabase.rpc('get_any_counselor_id');
-      if (anyRole) setCounselorId(anyRole);
-    };
-    fetchCounselor();
-  }, []);
+  const fetchCounselor = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-  // Load draft if draftId is in the URL
+    const { data: assignment, error } = await supabase
+      .from("student_counselor_assignments")
+      .select("counselor_id")
+      .eq("student_id", user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error fetching counselor assignment:", error);
+      return;
+    }
+
+    if (assignment?.counselor_id) {
+      setCounselorId(assignment.counselor_id);
+    } else {
+      console.warn("No counselor assigned to this student");
+    }
+  };
+
+  fetchCounselor();
+}, []);
+
   useEffect(() => {
     if (!urlDraftId) return;
     const loadDraft = async () => {
