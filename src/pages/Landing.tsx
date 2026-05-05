@@ -21,7 +21,7 @@ const Landing = () => {
           View Demo
         </Button>
       </div> */}
-
+      
       <div className="max-w-2xl w-full text-center space-y-8">
         {/* Logo */}
         <div className="flex justify-center">
