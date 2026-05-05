@@ -90,6 +90,32 @@ const LeaderCard = ({
   );
 };
 
+// ── Rank list row (positions 4–10) ───────────────────────────
+const RankListRow = ({
+  rank, name, avatarUrl, score, scoreLabel, sub,
+}: {
+  rank: number; name: string; avatarUrl: string | null;
+  score: number; scoreLabel: string; sub?: string;
+}) => (
+  <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-muted/30 transition-colors">
+    <span className="w-7 text-center text-sm font-bold text-muted-foreground shrink-0">#{rank + 1}</span>
+    <Avatar className="h-8 w-8 shrink-0">
+      <AvatarImage src={avatarUrl ?? undefined} />
+      <AvatarFallback className="text-xs font-semibold">
+        {name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+      </AvatarFallback>
+    </Avatar>
+    <div className="flex-1 min-w-0">
+      <p className="text-sm font-medium text-foreground truncate">{name}</p>
+      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+    </div>
+    <div className="shrink-0 text-right">
+      <p className="text-sm font-bold text-foreground">{score}%</p>
+      <p className="text-[10px] text-muted-foreground">{scoreLabel}</p>
+    </div>
+  </div>
+);
+
 // ── Custom pie label ─────────────────────────────────────────
 const renderPieLabel = ({ name, percent }: { name: string; percent: number }) =>
   percent > 0.05 ? `${name} ${(percent * 100).toFixed(0)}%` : "";
@@ -165,17 +191,34 @@ const PrincipalDashboard = () => {
             ) : !analytics?.topStudents.length ? (
               <p className="text-sm text-muted-foreground text-center py-8">No student data yet.</p>
             ) : (
-              analytics.topStudents.map((s, i) => (
-                <LeaderCard
-                  key={s.id}
-                  rank={i}
-                  name={s.name}
-                  avatarUrl={s.avatarUrl}
-                  score={s.completionScore}
-                  scoreLabel="completion"
-                  sub={s.riskLevel === "at-risk" ? "⚠️ At Risk" : s.riskLevel === "needs-attention" ? "👀 Needs Attention" : "✅ On Track"}
-                />
-              ))
+              <>
+                {analytics.topStudents.slice(0, 3).map((s, i) => (
+                  <LeaderCard
+                    key={s.id}
+                    rank={i}
+                    name={s.name}
+                    avatarUrl={s.avatarUrl}
+                    score={s.completionScore}
+                    scoreLabel="completion"
+                    sub={s.riskLevel === "at-risk" ? "⚠️ At Risk" : s.riskLevel === "needs-attention" ? "👀 Needs Attention" : "✅ On Track"}
+                  />
+                ))}
+                {analytics.topStudents.length > 3 && (
+                  <div className="mt-1 pt-2 border-t border-border space-y-0.5">
+                    {analytics.topStudents.slice(3).map((s, i) => (
+                      <RankListRow
+                        key={s.id}
+                        rank={i + 3}
+                        name={s.name}
+                        avatarUrl={s.avatarUrl}
+                        score={s.completionScore}
+                        scoreLabel="completion"
+                        sub={s.riskLevel === "at-risk" ? "⚠️ At Risk" : s.riskLevel === "needs-attention" ? "👀 Needs Attention" : "✅ On Track"}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
@@ -195,17 +238,34 @@ const PrincipalDashboard = () => {
             ) : !analytics?.topCounselors.length ? (
               <p className="text-sm text-muted-foreground text-center py-8">No counselor data yet.</p>
             ) : (
-              analytics.topCounselors.map((c, i) => (
-                <LeaderCard
-                  key={c.id}
-                  rank={i}
-                  name={c.name}
-                  avatarUrl={c.avatarUrl}
-                  score={c.avgCompletion}
-                  scoreLabel="avg completion"
-                  sub={`${c.studentCount} student${c.studentCount !== 1 ? "s" : ""}${c.atRiskCount > 0 ? ` · ${c.atRiskCount} at risk` : ""}`}
-                />
-              ))
+              <>
+                {analytics.topCounselors.slice(0, 3).map((c, i) => (
+                  <LeaderCard
+                    key={c.id}
+                    rank={i}
+                    name={c.name}
+                    avatarUrl={c.avatarUrl}
+                    score={c.avgCompletion}
+                    scoreLabel="avg completion"
+                    sub={`${c.studentCount} student${c.studentCount !== 1 ? "s" : ""}${c.atRiskCount > 0 ? ` · ${c.atRiskCount} at risk` : ""}`}
+                  />
+                ))}
+                {analytics.topCounselors.length > 3 && (
+                  <div className="mt-1 pt-2 border-t border-border space-y-0.5">
+                    {analytics.topCounselors.slice(3).map((c, i) => (
+                      <RankListRow
+                        key={c.id}
+                        rank={i + 3}
+                        name={c.name}
+                        avatarUrl={c.avatarUrl}
+                        score={c.avgCompletion}
+                        scoreLabel="avg completion"
+                        sub={`${c.studentCount} student${c.studentCount !== 1 ? "s" : ""}${c.atRiskCount > 0 ? ` · ${c.atRiskCount} at risk` : ""}`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

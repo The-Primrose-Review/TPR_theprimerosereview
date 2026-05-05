@@ -256,7 +256,7 @@ export const usePrincipalAnalytics = () => {
           riskLevel:       riskOf(sid),
         }))
         .sort((a, b) => b.completionScore - a.completionScore)
-        .slice(0, 3);
+        .slice(0, 10);
 
       const topCounselors: LeaderCounselor[] = counselorIds
         .map(cid => {
@@ -274,7 +274,7 @@ export const usePrincipalAnalytics = () => {
         })
         .filter(c => c.studentCount > 0)
         .sort((a, b) => b.avgCompletion - a.avgCompletion)
-        .slice(0, 3);
+        .slice(0, 10);
 
       // ── Key insights ──────────────────────────────────────
       const insights: string[] = [];

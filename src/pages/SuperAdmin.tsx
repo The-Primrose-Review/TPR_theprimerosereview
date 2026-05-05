@@ -24,6 +24,7 @@ import {
   Search, LogOut, RefreshCw, Download,
   Users, Building2, GraduationCap, UserCircle, Shield,
   Trash2, ArrowLeftRight, MessageSquare, Send,
+  Activity, FileText, BookOpen, Award, TrendingUp, Clock, CheckCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import primroseLogo from "@/assets/primrose-logo.png";
@@ -43,6 +44,36 @@ type MsgRecord = {
   content: string;
   created_at: string;
 };
+
+type PlatformActivity = {
+  totalEssays: number;
+  totalApps: number;
+  totalRecs: number;
+  essaysPending: number;
+  appsSubmitted: number;
+  activeStudents: number;
+  counselorsAssigned: number;
+  recentEssays: number;
+  recentApps: number;
+  recentRecs: number;
+};
+
+const ActivityMiniCard = ({
+  label, value, icon: Icon, iconColor, iconBg,
+}: {
+  label: string; value: string | number;
+  icon: React.ElementType; iconColor: string; iconBg: string;
+}) => (
+  <div className="bg-gray-50 rounded-xl p-4 flex items-center gap-3">
+    <div className={`p-2 rounded-lg ${iconBg} shrink-0`}>
+      <Icon className={`h-4 w-4 ${iconColor}`} />
+    </div>
+    <div>
+      <p className="text-lg font-bold text-gray-900">{value}</p>
+      <p className="text-xs text-gray-500">{label}</p>
+    </div>
+  </div>
+);
 
 const ROLE_TABS = ["all", "student", "counselor", "principal", "parent", "admin"] as const;
 type RoleTab = (typeof ROLE_TABS)[number];
@@ -69,6 +100,8 @@ const SuperAdmin = () => {
   const [activeTab, setActiveTab] = useState<RoleTab>("all");
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [adminUserId, setAdminUserId] = useState<string | null>(null);
+  const [activity, setActivity] = useState<PlatformActivity | null>(null);
+  const [activityLoading, setActivityLoading] = useState(true);
 
   // ── Delete state ──────────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState<PlatformUser | null>(null);
@@ -96,8 +129,46 @@ const SuperAdmin = () => {
     setLoading(false);
   };
 
+  const fetchActivity = async () => {
+    setActivityLoading(true);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const [essaysRes, appsRes, recsRes, assignmentsRes] = await Promise.all([
+      supabase.from("essay_feedback").select("student_id, status, created_at"),
+      supabase.from("applications").select("student_id, status, created_at"),
+      supabase.from("recommendation_requests").select("student_id, status, created_at"),
+      supabase.from("student_counselor_assignments").select("student_id, counselor_id"),
+    ]);
+
+    const essays      = essaysRes.data      ?? [];
+    const apps        = appsRes.data        ?? [];
+    const recs        = recsRes.data        ?? [];
+    const assignments = assignmentsRes.data ?? [];
+
+    const activeStudentIds = new Set([
+      ...essays.map((e: any) => e.student_id),
+      ...apps.map((a: any) => a.student_id),
+    ]);
+    const counselorsAssigned = new Set(assignments.map((a: any) => a.counselor_id)).size;
+
+    setActivity({
+      totalEssays:        essays.length,
+      totalApps:          apps.length,
+      totalRecs:          recs.length,
+      essaysPending:      essays.filter((e: any) => e.status === "pending").length,
+      appsSubmitted:      apps.filter((a: any) => a.status === "submitted").length,
+      activeStudents:     activeStudentIds.size,
+      counselorsAssigned,
+      recentEssays:       essays.filter((e: any) => e.created_at >= sevenDaysAgo).length,
+      recentApps:         apps.filter((a: any) => a.created_at && a.created_at >= sevenDaysAgo).length,
+      recentRecs:         recs.filter((r: any) => r.created_at && r.created_at >= sevenDaysAgo).length,
+    });
+    setActivityLoading(false);
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchActivity();
     supabase.auth.getUser().then(({ data }) => setAdminUserId(data.user?.id ?? null));
   }, []);
 
@@ -276,7 +347,7 @@ const SuperAdmin = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={fetchUsers} disabled={loading}>
+          <Button variant="outline" size="sm" onClick={() => { fetchUsers(); fetchActivity(); }} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
@@ -309,6 +380,63 @@ const SuperAdmin = () => {
               <p className="text-xs text-gray-500 mt-0.5">{label}</p>
             </div>
           ))}
+        </div>
+
+        {/* ── Activity Overview ── */}
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                <Activity className="h-4 w-4 text-gray-500" />
+                Platform Activity
+              </h2>
+              <p className="text-xs text-gray-400 mt-0.5">Engagement overview — content is not shown</p>
+            </div>
+            {activityLoading && <RefreshCw className="h-4 w-4 text-gray-400 animate-spin" />}
+          </div>
+
+          {activityLoading ? (
+            <div className="p-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
+            </div>
+          ) : activity ? (
+            <div className="p-6 space-y-6">
+
+              {/* Total content */}
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Total Content</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <ActivityMiniCard label="Essays"            value={activity.totalEssays}    icon={FileText}      iconColor="text-blue-600"   iconBg="bg-blue-50" />
+                  <ActivityMiniCard label="Applications"      value={activity.totalApps}      icon={BookOpen}      iconColor="text-green-600"  iconBg="bg-green-50" />
+                  <ActivityMiniCard label="Rec Letters"       value={activity.totalRecs}      icon={Award}         iconColor="text-purple-600" iconBg="bg-purple-50" />
+                  <ActivityMiniCard label="Active Students"   value={`${activity.activeStudents} / ${stats.students}`} icon={Users} iconColor="text-indigo-600" iconBg="bg-indigo-50" />
+                </div>
+              </div>
+
+              {/* Status snapshot */}
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Status Snapshot</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <ActivityMiniCard label="Essays Pending Review"      value={activity.essaysPending}                                       icon={Clock}         iconColor="text-amber-600"  iconBg="bg-amber-50" />
+                  <ActivityMiniCard label="Apps Submitted"             value={activity.appsSubmitted}                                       icon={CheckCircle}   iconColor="text-green-600"  iconBg="bg-green-50" />
+                  <ActivityMiniCard label="Counselors with Students"   value={`${activity.counselorsAssigned} / ${stats.counselors}`}       icon={GraduationCap} iconColor="text-purple-600" iconBg="bg-purple-50" />
+                </div>
+              </div>
+
+              {/* Recent activity */}
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Last 7 Days</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <ActivityMiniCard label="New Essays"       value={activity.recentEssays} icon={TrendingUp} iconColor="text-blue-600"   iconBg="bg-blue-50" />
+                  <ActivityMiniCard label="New Applications" value={activity.recentApps}   icon={TrendingUp} iconColor="text-green-600"  iconBg="bg-green-50" />
+                  <ActivityMiniCard label="New Rec Requests" value={activity.recentRecs}   icon={TrendingUp} iconColor="text-purple-600" iconBg="bg-purple-50" />
+                </div>
+              </div>
+
+            </div>
+          ) : (
+            <p className="p-6 text-sm text-gray-400">Could not load activity data.</p>
+          )}
         </div>
 
         {/* ── Schools breakdown ── */}
