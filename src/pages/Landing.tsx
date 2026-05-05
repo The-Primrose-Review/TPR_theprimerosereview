@@ -11,7 +11,7 @@ const Landing = () => {
     <div className="relative min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/10 flex flex-col items-center justify-center p-6">
       
       {/* View Demo + Demo Maker - top left */}
-      <div className="absolute top-6 left-6 flex gap-2">
+      {/* <div className="absolute top-6 left-6 flex gap-2">
         <Button
           variant="outline"
           className="gap-2"
@@ -20,7 +20,7 @@ const Landing = () => {
           <Eye className="h-4 w-4" />
           View Demo
         </Button>
-      </div>
+      </div> */}
 
       <div className="max-w-2xl w-full text-center space-y-8">
         {/* Logo */}
