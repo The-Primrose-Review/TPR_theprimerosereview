@@ -59,6 +59,7 @@ import PersonalEssay from "./pages/PersonalEssay";
 import StudentFeedback from "./pages/StudentFeedback";
 import SuperAdmin from "./pages/SuperAdmin";
 import EvaluationEngine from "./pages/EvaluationEngine";
+import PrimroseLab from "./pages/PrimroseLab";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +74,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const isStudentRoute =
   [
     '/student-dashboard',
+    '/primrose-lab',
     '/student-personal-area',
     '/student-stats',
     '/student-recommendation-letters',
@@ -350,6 +352,14 @@ const App = () => {
             <AppLayout>
               <ProtectedRoute allowedRoles={['student']}>
                 <EvaluationEngine />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+
+          <Route path="/primrose-lab" element={
+            <AppLayout>
+              <ProtectedRoute allowedRoles={['student']}>
+                <PrimroseLab />
               </ProtectedRoute>
             </AppLayout>
           } />
