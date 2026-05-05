@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useStudentPersonalArea, type EssayFeedback } from "@/hooks/Usestudentpersonalarea";
+import { useStudentPersonalArea, type EssayFeedback } from "@/hooks/useStudentPersonalArea.ts";
 import { StudentActionItemsSection } from "@/components/StudentActionItemsSection";
 import type { TrackedChange } from "@/components/EssayFeedbackModal";
 import { useNavigate, useSearchParams } from "react-router-dom";
