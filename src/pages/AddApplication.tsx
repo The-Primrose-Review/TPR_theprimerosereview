@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { usePreviewMode } from "@/contexts/PreviewModeContext";
+import { toast } from "sonner";
 import { useCelebration } from "@/hooks/useCelebration";
 import { CelebrationOverlay } from "@/components/CelebrationOverlay";
 import { useNavigate } from "react-router-dom";
@@ -61,6 +63,7 @@ const CURRENT_YEAR = new Date().getFullYear();
 const GRAD_YEARS = [CURRENT_YEAR, CURRENT_YEAR + 1, CURRENT_YEAR + 2];
 
 const AddApplication = () => {
+  const isPreviewMode = usePreviewMode();
   const navigate = useNavigate();
   const { createApplication } = useApplications();
   const { celebrate, activeEvent } = useCelebration();
@@ -111,6 +114,12 @@ const AddApplication = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isPreviewMode) {
+      toast.info("Preview mode — adding applications is disabled");
+      return;
+    }
+
     if (!form.school_name || !form.application_type || !form.deadline_date) return;
 
     setIsSubmitting(true);

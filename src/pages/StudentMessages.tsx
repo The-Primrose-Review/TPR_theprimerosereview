@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { usePreviewMode } from "@/contexts/PreviewModeContext";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +42,7 @@ type DBMessage = {
 };
 
 const StudentMessages = () => {
+  const isPreviewMode = usePreviewMode();
   const [userId, setUserId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<DBConversation[]>([]);
   const [messages, setMessages] = useState<Record<string, DBMessage[]>>({});
@@ -206,6 +209,10 @@ const StudentMessages = () => {
   };
 
   const startConversation = async () => {
+    if (isPreviewMode) {
+      toast.info("Preview mode — starting conversations is disabled");
+      return;
+    }
     if (!selectedCounselorId || !firstMessage.trim() || !userId) return;
     setCreating(true);
 
@@ -264,6 +271,10 @@ const StudentMessages = () => {
 
   // ── Send message ───────────────────────────────────────────────
   const handleSend = async () => {
+    if (isPreviewMode) {
+      toast.info("Preview mode — sending messages is disabled");
+      return;
+    }
     if (!newMessage.trim() || !selected || !userId) return;
 
     const { data } = await supabase

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { usePreviewMode } from "@/contexts/PreviewModeContext";
 import { useCelebration } from "@/hooks/useCelebration";
 import { CelebrationOverlay } from "@/components/CelebrationOverlay";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -54,6 +55,7 @@ interface AnalysisResult {
 }
 
 const SubmitEssay = () => {
+  const isPreviewMode = usePreviewMode();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -265,6 +267,11 @@ const SubmitEssay = () => {
   // ── Submit ────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isPreviewMode) {
+      toast.info("Preview mode — essay submission is disabled");
+      return;
+    }
 
     if (!title.trim())   { toast.error("Please add an essay title");         return; }
     if (!content.trim()) { toast.error("Please add your essay content");     return; }

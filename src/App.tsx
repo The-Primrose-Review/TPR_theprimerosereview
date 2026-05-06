@@ -11,6 +11,8 @@ import { Rocket, CheckCircle2 } from "lucide-react";
 import { useAuthState } from "@/hooks/useAuthState";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import PreviewModeContext from "@/contexts/PreviewModeContext";
+import { PreviewBanner } from "@/components/PreviewBanner";
 import Index from "./pages/Index";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
@@ -70,7 +72,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, isAuthenticated } = useAuthState();
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
   const noSidebarRoutes = ['/', '/auth', '/demo', '/product-demo', '/demo-maker'];
-  // const isStudentRoute = location.pathname.startsWith('/student') || location.pathname === '/submit-essay' || location.pathname === '/personal-essay' || location.pathname === '/student-feedback' || location.pathname === '/add-application' || location.pathname === '/student-recommendation-letters' || location.pathname === '/student-messages';
+  const isPreviewMode = location.pathname.startsWith('/preview/');
   const isStudentRoute =
   [
     '/student-dashboard',
@@ -106,62 +108,66 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AppSidebar />
+    <PreviewModeContext.Provider value={isPreviewMode}>
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full">
+          <AppSidebar />
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col">
-          {/* Header with Logos */}
-          <header className="h-20 flex items-center justify-between border-b border-border bg-background px-4">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger />
-              <img
-                src={primroseLogo}
-                alt="The Primrose Review"
-                className="h-12 w-auto"
-              />
-            </div>
-            <div className="flex items-center gap-4">
-              {isStudentRoute && (
-                onboardingCompleted ? (
-                  <Button
-                    onClick={() => toast.success("You've completed your onboarding — welcome aboard! We're so excited to have you here.", { duration: 4000 })}
-                    className="gap-2 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 font-medium transition-colors"
-                    size="sm"
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    Onboarding Complete!
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => navigate('/onboarding')}
-                    className="gap-2 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground border border-border font-medium transition-colors"
-                    size="sm"
-                  >
-                    <Rocket className="h-4 w-4" />
-                    Complete full onboarding here
-                  </Button>
-                )
-              )}
-              <img
-                src={clientLogo}
-                alt="Client Logo"
-                className="h-16 w-auto rounded"
-              />
-            </div>
-          </header>
+          {/* Main Content */}
+          <div className="flex-1 flex flex-col min-w-0">
+            {isPreviewMode && <PreviewBanner />}
 
-          {/* Page Content */}
-          <main className="flex-1 overflow-auto">
-            {children}
-          </main>
+            {/* Header with Logos */}
+            <header className="h-20 flex items-center justify-between border-b border-border bg-background px-4 shrink-0">
+              <div className="flex items-center gap-4">
+                <SidebarTrigger />
+                <img
+                  src={primroseLogo}
+                  alt="The Primrose Review"
+                  className="h-12 w-auto"
+                />
+              </div>
+              <div className="flex items-center gap-4">
+                {isStudentRoute && !isPreviewMode && (
+                  onboardingCompleted ? (
+                    <Button
+                      onClick={() => toast.success("You've completed your onboarding — welcome aboard! We're so excited to have you here.", { duration: 4000 })}
+                      className="gap-2 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 font-medium transition-colors"
+                      size="sm"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      Onboarding Complete!
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => navigate('/onboarding')}
+                      className="gap-2 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground border border-border font-medium transition-colors"
+                      size="sm"
+                    >
+                      <Rocket className="h-4 w-4" />
+                      Complete full onboarding here
+                    </Button>
+                  )
+                )}
+                <img
+                  src={clientLogo}
+                  alt="Client Logo"
+                  className="h-16 w-auto rounded"
+                />
+              </div>
+            </header>
+
+            {/* Page Content */}
+            <main className="flex-1 overflow-auto">
+              {children}
+            </main>
+          </div>
+
+          {/* Demo Navigation - floating button */}
+          {/* <DemoNavigation /> */}
         </div>
-
-        {/* Demo Navigation - floating button */}
-        {/* <DemoNavigation /> */}
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </PreviewModeContext.Provider>
   );
 };
 
@@ -451,6 +457,85 @@ const App = () => {
             <AppLayout>
               <ProtectedRoute allowedRoles={['counselor', 'admin']}>
                 <EssayToolkit />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+
+          {/* ── Student Experience Preview routes (counselor + principal) ── */}
+          <Route path="/preview/student-dashboard" element={
+            <AppLayout>
+              <ProtectedRoute allowedRoles={['counselor', 'principal', 'admin']}>
+                <StudentDashboard />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+          <Route path="/preview/primrose-lab" element={
+            <AppLayout>
+              <ProtectedRoute allowedRoles={['counselor', 'principal', 'admin']}>
+                <PrimroseLab />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+          <Route path="/preview/student-personal-area" element={
+            <AppLayout>
+              <ProtectedRoute allowedRoles={['counselor', 'principal', 'admin']}>
+                <StudentPersonalArea />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+          <Route path="/preview/student-recommendation-letters" element={
+            <AppLayout>
+              <ProtectedRoute allowedRoles={['counselor', 'principal', 'admin']}>
+                <StudentRecommendationLetters />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+          <Route path="/preview/student-stats" element={
+            <AppLayout>
+              <ProtectedRoute allowedRoles={['counselor', 'principal', 'admin']}>
+                <StudentStats />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+          <Route path="/preview/student-messages" element={
+            <AppLayout>
+              <ProtectedRoute allowedRoles={['counselor', 'principal', 'admin']}>
+                <StudentMessages />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+          <Route path="/preview/student-feedback" element={
+            <AppLayout>
+              <ProtectedRoute allowedRoles={['counselor', 'principal', 'admin']}>
+                <StudentFeedback />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+          <Route path="/preview/evaluation-engine" element={
+            <AppLayout>
+              <ProtectedRoute allowedRoles={['counselor', 'principal', 'admin']}>
+                <EvaluationEngine />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+          <Route path="/preview/submit-essay" element={
+            <AppLayout>
+              <ProtectedRoute allowedRoles={['counselor', 'principal', 'admin']}>
+                <SubmitEssay />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+          <Route path="/preview/add-application" element={
+            <AppLayout>
+              <ProtectedRoute allowedRoles={['counselor', 'principal', 'admin']}>
+                <AddApplication />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+          <Route path="/preview/personal-essay" element={
+            <AppLayout>
+              <ProtectedRoute allowedRoles={['counselor', 'principal', 'admin']}>
+                <PersonalEssay />
               </ProtectedRoute>
             </AppLayout>
           } />

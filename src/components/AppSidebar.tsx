@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { GraduationCap, Users, FileText, Calendar, BarChart3, MessageSquare, Bell, UserCircle, BookOpen, Award, Home, PartyPopper, Settings, Building2, ShieldAlert, Star, Zap, FlaskConical } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { GraduationCap, Users, FileText, Calendar, BarChart3, MessageSquare, Bell, UserCircle, BookOpen, Award, Home, PartyPopper, Settings, Building2, ShieldAlert, Star, Zap, FlaskConical, Eye, ArrowLeft } from "lucide-react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 
@@ -26,13 +26,7 @@ const mainItems: NavItem[] = [{
   title: "Essays",
   url: "/essays",
   icon: FileText
-},
-// {
-//   title: "Essay Toolkit",
-//   url: "/essay-toolkit",
-//   icon: Sparkles
-// },
-{
+}, {
   title: "Applications",
   url: "/applications",
   icon: Calendar
@@ -49,6 +43,10 @@ const mainItems: NavItem[] = [{
   title: "Notifications",
   url: "/notifications",
   icon: Bell
+}, {
+  title: "Student Experience",
+  url: "/preview/student-dashboard",
+  icon: Eye,
 }];
 
 const studentItems: NavItem[] = [{
@@ -129,6 +127,10 @@ const principalItems = [{
   title: "School Settings",
   url: "/principal-settings",
   icon: Settings
+}, {
+  title: "Student Experience",
+  url: "/preview/student-dashboard",
+  icon: Eye,
 }];
 
 // Routes that belong to each role
@@ -139,15 +141,30 @@ const principalRoutes = ['/principal-dashboard', '/principal-students', '/princi
 export function AppSidebar() {
   const { open } = useSidebar();
   const location = useLocation();
+  const navigate = useNavigate();
   const currentPath = location.pathname;
+
+  const isPreviewMode = currentPath.startsWith('/preview/');
+
+  // Store exit path when entering preview so back button knows where to return
+  const previewExitPath = isPreviewMode
+    ? (sessionStorage.getItem('previewExitPath') ?? '/dashboard')
+    : null;
 
   // Determine current user role based on the route
   const currentRole: UserRole = useMemo(() => {
+    if (isPreviewMode) return 'student';
     if (studentRoutes.some(route => currentPath.startsWith(route))) return 'student';
     if (parentRoutes.some(route => currentPath.startsWith(route))) return 'parent';
     if (principalRoutes.some(route => currentPath.startsWith(route))) return 'principal';
     return 'counselor';
-  }, [currentPath]);
+  }, [currentPath, isPreviewMode]);
+
+  // When in preview mode, remap student item URLs to /preview/* versions
+  const resolvedStudentItems: NavItem[] = useMemo(() => {
+    if (!isPreviewMode) return studentItems;
+    return studentItems.map(item => ({ ...item, url: `/preview${item.url}` }));
+  }, [isPreviewMode]);
 
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     isActive ? "bg-primary text-primary-foreground" : "hover:bg-accent hover:text-accent-foreground";
@@ -155,7 +172,17 @@ export function AppSidebar() {
   const renderMenuItem = (item: NavItem) => (
     <SidebarMenuItem key={item.title}>
       <SidebarMenuButton asChild>
-        <NavLink to={item.url} end className={getNavCls} id={item.tourId}>
+        <NavLink
+          to={item.url}
+          end
+          className={getNavCls}
+          id={item.tourId}
+          onClick={() => {
+            if (item.url === '/preview/student-dashboard') {
+              sessionStorage.setItem('previewExitPath', currentPath);
+            }
+          }}
+        >
           <item.icon className="h-4 w-4" />
           {open && (
             <>
@@ -191,7 +218,33 @@ export function AppSidebar() {
             </div>
           </div>
 
-          {currentRole === 'counselor' && (
+          {/* Preview mode: back button + student nav */}
+          {isPreviewMode && (
+            <>
+              <div className="px-3 pt-3 pb-1">
+                <button
+                  onClick={() => navigate(previewExitPath ?? '/dashboard')}
+                  className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full px-2 py-1.5 rounded-md hover:bg-accent"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
+                  {open && <span>Exit student preview</span>}
+                </button>
+              </div>
+              <SidebarGroup>
+                <SidebarGroupLabel className="flex items-center gap-1.5">
+                  <Eye className="h-3 w-3" />
+                  {open && "Student Preview"}
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {resolvedStudentItems.map(item => renderMenuItem(item))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </>
+          )}
+
+          {!isPreviewMode && currentRole === 'counselor' && (
             <SidebarGroup>
               <SidebarGroupLabel>Counselor</SidebarGroupLabel>
               <SidebarGroupContent>
@@ -202,7 +255,7 @@ export function AppSidebar() {
             </SidebarGroup>
           )}
 
-          {currentRole === 'student' && (
+          {!isPreviewMode && currentRole === 'student' && (
             <SidebarGroup>
               <SidebarGroupLabel>Student Portal</SidebarGroupLabel>
               <SidebarGroupContent>
@@ -213,7 +266,7 @@ export function AppSidebar() {
             </SidebarGroup>
           )}
 
-          {currentRole === 'parent' && (
+          {!isPreviewMode && currentRole === 'parent' && (
             <SidebarGroup>
               <SidebarGroupLabel>Parent Portal</SidebarGroupLabel>
               <SidebarGroupContent>
@@ -224,7 +277,7 @@ export function AppSidebar() {
             </SidebarGroup>
           )}
 
-          {currentRole === 'principal' && (
+          {!isPreviewMode && currentRole === 'principal' && (
             <SidebarGroup>
               <SidebarGroupLabel>Admin</SidebarGroupLabel>
               <SidebarGroupContent>
