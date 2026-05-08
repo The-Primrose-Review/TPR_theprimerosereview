@@ -25,6 +25,7 @@ const Signup = () => {
 
   // Student fields
   const [schoolName, setSchoolName] = useState("");
+  const [inviteSchoolName, setInviteSchoolName] = useState<string | null>(null);
   const [grade, setGrade] = useState("");
   const [graduationYear, setGraduationYear] = useState("");
   const [parentName, setParentName] = useState("");
@@ -53,6 +54,23 @@ useEffect(() => {
     if (inviteCodeParam) setInvitationCode(inviteCodeParam);
   } else if (inviteCodeParam) {
     setSelectedRole('student');
+    // Fetch counselor's school name to display as locked field
+    (async () => {
+      const { data: inviteData } = await supabase
+        .from('counselor_invites')
+        .select('counselor_id')
+        .eq('invite_code', inviteCodeParam)
+        .maybeSingle();
+      if (inviteData) {
+        const { data: counselorProfile } = await supabase
+          .from('profiles')
+          .select('school_id, schools(name)')
+          .eq('user_id', inviteData.counselor_id)
+          .maybeSingle();
+        const name = (counselorProfile?.schools as { name: string } | null)?.name;
+        if (name) setInviteSchoolName(name);
+      }
+    })();
   }
 }, [inviteCodeParam, roleParam]);
 
@@ -409,13 +427,20 @@ useEffect(() => {
 
                   <div className="space-y-2">
                     <Label htmlFor="schoolName">School Name</Label>
-                    <Input
-                      id="schoolName"
-                      type="text"
-                      value={schoolName}
-                      onChange={(e) => setSchoolName(e.target.value)}
-                      placeholder="Lincoln High School"
-                    />
+                    {inviteSchoolName ? (
+                      <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-muted text-sm text-muted-foreground">
+                        <span className="flex-1">{inviteSchoolName}</span>
+                        <span className="text-xs text-primary font-medium">Auto-filled</span>
+                      </div>
+                    ) : (
+                      <Input
+                        id="schoolName"
+                        type="text"
+                        value={schoolName}
+                        onChange={(e) => setSchoolName(e.target.value)}
+                        placeholder="Lincoln High School"
+                      />
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
