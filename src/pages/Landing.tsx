@@ -80,7 +80,7 @@ const Landing = () => {
               onClick={() => navigate('/auth?role=principal')}
             >
               <Building2 className="h-8 w-8" />
-              <span className="font-medium">Admin</span>
+              <span className="font-medium">Principal</span>
             </Button>
           </div>
 
