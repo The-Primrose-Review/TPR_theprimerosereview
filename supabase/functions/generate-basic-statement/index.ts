@@ -1,7 +1,5 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY2');
+import { callAI } from "../_shared/ai-client.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,7 +7,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -17,19 +14,12 @@ serve(async (req) => {
   try {
     const { answers } = await req.json();
 
-    if (!anthropicKey) {
-      throw new Error('Anthropic API key not configured');
-    }
-
-    // Extract key information for a more focused prompt, only if they have values
     const name = answers.name || "the applicant";
     const universities = answers.universities || answers.university_name || "the university";
     const programInfo = answers.program || "the program";
     const fieldOfStudy = answers.field_of_study || "the desired field";
-    
-    // Build dynamic field list only for fields with actual values
-    const dynamicFields = [];
 
+    const dynamicFields = [];
 
     if (answers.background) dynamicFields.push(`- Background: ${answers.background}`);
     if (answers.gender) dynamicFields.push(`- Gender: ${answers.gender}`);
@@ -41,9 +31,7 @@ serve(async (req) => {
     if (answers.career_goals) dynamicFields.push(`- Career Goals: ${answers.career_goals}`);
     if (answers.personal_strengths) dynamicFields.push(`- Personal Strengths: ${answers.personal_strengths}`);
     if (answers.years_experience) dynamicFields.push(`- Years Experience: ${answers.years_experience}`);
-    
 
-    // Parse answers JSON field if it exists and add non-empty values
     if (answers.answers && typeof answers.answers === 'object') {
       Object.entries(answers.answers).forEach(([key, value]) => {
         if (value && value !== '') {
@@ -52,17 +40,11 @@ serve(async (req) => {
       });
     }
 
-    
-
-    // Create a focused system prompt for preview mode (limited information)
-    const systemPrompt = `As an admissions expert, create a concise personal statement preview for ${name}, 
-    who is applying to ${universities} for ${programInfo} in ${fieldOfStudy}. 
-    This is a preview based on initial information - focus on their core motivations and background. 
+    const systemPrompt = `As an admissions expert, create a concise personal statement preview for ${name},
+    who is applying to ${universities} for ${programInfo} in ${fieldOfStudy}.
+    This is a preview based on initial information - focus on their core motivations and background.
     Keep it authentic, engaging, and well-structured even with limited details.`;
 
-
-
-    
     const userPrompt = `Background Information:
     - Name: ${name}
     - University: ${universities}
@@ -77,30 +59,18 @@ serve(async (req) => {
     4. Stays between 350-650 words
     5. Works well even with limited background information`;
 
-    console.log("Calling Anthropic API to generate basic statement...");
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
-      }),
+    console.log("Calling AI to generate basic statement...");
+
+    const personalStatement = await callAI({
+      systemPrompt,
+      userPrompt,
+      model: 'claude-sonnet-4-6',
+      maxTokens: 1024,
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      console.error("Anthropic API error:", error);
+    if (!personalStatement) {
       throw new Error('Failed to generate personal statement');
     }
-
-    const data = await response.json();
-    const personalStatement = data.content[0].text;
 
     return new Response(
       JSON.stringify({ personalStatement }),
@@ -110,10 +80,7 @@ serve(async (req) => {
     console.error("Error in basic statement generation:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

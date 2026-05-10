@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { callAI } from "../_shared/ai-client.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -52,16 +53,6 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "At least one university is required" }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const ANTHROPIC_API_KEY2 = Deno.env.get("ANTHROPIC_API_KEY2");
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-
-    if (!ANTHROPIC_API_KEY2 && !LOVABLE_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: "AI service not configured" }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -137,72 +128,7 @@ ${essayContent}
 
 Apply the rubrics precisely. Be honest. Return only the JSON.`;
 
-    let content: string | null = null;
-
-    if (ANTHROPIC_API_KEY2) {
-      console.log("Calling Anthropic Claude...");
-      try {
-        const response = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: {
-            "x-api-key": ANTHROPIC_API_KEY2,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "claude-sonnet-4-20250514",
-            max_tokens: 4096,
-            system: systemPrompt,
-            messages: [{ role: "user", content: userPrompt }],
-          }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          content = data.content?.[0]?.text ?? null;
-          if (content) console.log("Anthropic response received");
-          else console.warn("Empty content from Anthropic, falling back");
-        } else {
-          const err = await response.text();
-          console.warn(`Anthropic error ${response.status}: ${err} — falling back`);
-        }
-      } catch (err) {
-        console.warn("Anthropic request failed:", err, "— falling back");
-      }
-    }
-
-    if (!content && LOVABLE_API_KEY) {
-      console.log("Calling Gemini fallback...");
-      try {
-        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt },
-            ],
-            temperature: 0.7,
-          }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          content = data.choices?.[0]?.message?.content ?? null;
-          if (content) console.log("Gemini fallback response received");
-          else console.error("Empty content from Gemini fallback");
-        } else {
-          const err = await response.text();
-          console.error(`Gemini fallback error ${response.status}: ${err}`);
-        }
-      } catch (err) {
-        console.error("Gemini fallback failed:", err);
-      }
-    }
+    const content = await callAI({ systemPrompt, userPrompt, maxTokens: 4096, fallbackToGemini: true });
 
     if (!content) {
       return new Response(

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { callAI } from "../_shared/ai-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,7 +15,6 @@ serve(async (req: Request) => {
   try {
     const { essayContent, essayPrompt } = await req.json();
 
-    // Authenticate the student via their JWT
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -23,13 +23,10 @@ serve(async (req: Request) => {
       });
     }
 
-    const SUPABASE_URL            = Deno.env.get("SUPABASE_URL")!;
-    const SUPABASE_ANON_KEY       = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const SUPABASE_SERVICE_KEY    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const ANTHROPIC_API_KEY2      = Deno.env.get("ANTHROPIC_API_KEY2");
-    const LOVABLE_API_KEY         = Deno.env.get("LOVABLE_API_KEY");
+    const SUPABASE_URL         = Deno.env.get("SUPABASE_URL")!;
+    const SUPABASE_ANON_KEY    = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Resolve student identity from JWT
     const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -41,7 +38,6 @@ serve(async (req: Request) => {
       });
     }
 
-    // Fetch student profile + onboarding answers via service role
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     const [{ data: profile }, { data: onboarding }] = await Promise.all([
@@ -51,23 +47,21 @@ serve(async (req: Request) => {
 
     const firstName = profile?.full_name?.split(" ")[0] || "the student";
 
-    // Build a rich personality profile from onboarding data
     const lines: string[] = [];
     if (onboarding) {
-      if (onboarding.age_range)         lines.push(`Grade / level: ${onboarding.age_range}`);
-      if (onboarding.gender)            lines.push(`Gender: ${onboarding.gender}`);
-      if (onboarding.degree_type)       lines.push(`Degree they are pursuing: ${onboarding.degree_type}`);
-      if (onboarding.university_name)   lines.push(`Target university: ${onboarding.university_name}`);
-      if (onboarding.program)           lines.push(`Intended major / program: ${onboarding.program}`);
-      if (onboarding.career_goals)      lines.push(`Career goals: ${onboarding.career_goals}`);
-      if (onboarding.background)        lines.push(`Personal background: ${onboarding.background}`);
-      if (onboarding.personal_strengths)lines.push(`Core strengths / superpowers: ${onboarding.personal_strengths}`);
-      if (onboarding.inspiration)       lines.push(`People who inspire them: ${onboarding.inspiration}`);
-      if (onboarding.personal_story)    lines.push(`Personal story they shared: ${onboarding.personal_story}`);
-      if (onboarding.degree_interest)   lines.push(`Why they want this degree: ${onboarding.degree_interest}`);
-      if (onboarding.years_experience)  lines.push(`Years of relevant experience: ${onboarding.years_experience}`);
+      if (onboarding.age_range)          lines.push(`Grade / level: ${onboarding.age_range}`);
+      if (onboarding.gender)             lines.push(`Gender: ${onboarding.gender}`);
+      if (onboarding.degree_type)        lines.push(`Degree they are pursuing: ${onboarding.degree_type}`);
+      if (onboarding.university_name)    lines.push(`Target university: ${onboarding.university_name}`);
+      if (onboarding.program)            lines.push(`Intended major / program: ${onboarding.program}`);
+      if (onboarding.career_goals)       lines.push(`Career goals: ${onboarding.career_goals}`);
+      if (onboarding.background)         lines.push(`Personal background: ${onboarding.background}`);
+      if (onboarding.personal_strengths) lines.push(`Core strengths / superpowers: ${onboarding.personal_strengths}`);
+      if (onboarding.inspiration)        lines.push(`People who inspire them: ${onboarding.inspiration}`);
+      if (onboarding.personal_story)     lines.push(`Personal story they shared: ${onboarding.personal_story}`);
+      if (onboarding.degree_interest)    lines.push(`Why they want this degree: ${onboarding.degree_interest}`);
+      if (onboarding.years_experience)   lines.push(`Years of relevant experience: ${onboarding.years_experience}`);
 
-      // Also pull any freeform answers from the JSON blob
       if (onboarding.answers && typeof onboarding.answers === "object") {
         for (const [key, val] of Object.entries(onboarding.answers as Record<string, unknown>)) {
           if (typeof val === "string" && val.trim().length > 3) {
@@ -80,8 +74,6 @@ serve(async (req: Request) => {
     const studentProfile = lines.length > 0
       ? lines.join("\n")
       : "No onboarding profile yet — give thoughtful general college essay guidance.";
-
-    // ── Prompts ──────────────────────────────────────────────────────────────
 
     const hasEssay = Boolean(essayContent?.trim());
 
@@ -125,81 +117,16 @@ Nothing else — no intro, no outro, just the 4 suggestions.`;
       ? `${essayPrompt ? `Essay prompt: "${essayPrompt}"\n\n` : ""}Here is what ${firstName} has written so far:\n\n"${essayContent}"\n\nAnalyse this draft and give targeted feedback based on their profile. If it's already strong, say so specifically.`
       : `${essayPrompt ? `Essay prompt: "${essayPrompt}"\n\n` : ""}${firstName} hasn't written anything yet. Based on their profile, suggest 4 compelling angles or opening ideas they could take for their personal statement.`;
 
-    // ── Call Anthropic (primary) ─────────────────────────────────────────────
+    const suggestions = await callAI({ systemPrompt, userPrompt, maxTokens: 1024, fallbackToGemini: true });
 
-    let content: string | null = null;
-
-    if (ANTHROPIC_API_KEY2) {
-      try {
-        const res = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: {
-            "x-api-key": ANTHROPIC_API_KEY2,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "claude-sonnet-4-20250514",
-            max_tokens: 1024,
-            system: systemPrompt,
-            messages: [{ role: "user", content: userPrompt }],
-          }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          content = data.content?.[0]?.text ?? null;
-          if (content) console.log("Anthropic response received");
-          else console.warn("Empty Anthropic response — falling back to Gemini");
-        } else {
-          console.warn(`Anthropic error ${res.status} — falling back to Gemini`);
-        }
-      } catch (err) {
-        console.warn("Anthropic request failed:", err, "— falling back to Gemini");
-      }
-    }
-
-    // ── Fallback: Gemini 2.5 Flash ───────────────────────────────────────────
-
-    if (!content && LOVABLE_API_KEY) {
-      try {
-        const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt },
-            ],
-            temperature: 0.8,
-          }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          content = data.choices?.[0]?.message?.content ?? null;
-          if (content) console.log("Gemini fallback response received");
-          else console.error("Empty Gemini response");
-        } else {
-          console.error(`Gemini error ${res.status}`);
-        }
-      } catch (err) {
-        console.error("Gemini fallback failed:", err);
-      }
-    }
-
-    if (!content) {
+    if (!suggestions) {
       return new Response(JSON.stringify({ error: "AI service unavailable. Please try again." }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ suggestions: content }), {
+    return new Response(JSON.stringify({ suggestions }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 

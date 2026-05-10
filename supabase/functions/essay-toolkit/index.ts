@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { callAI } from "../_shared/ai-client.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,14 +18,6 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Essay content is required" }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const ANTHROPIC_API_KEY2 = Deno.env.get("ANTHROPIC_API_KEY2");
-    if (!ANTHROPIC_API_KEY2) {
-      return new Response(
-        JSON.stringify({ error: "AI service not configured" }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -103,43 +96,11 @@ Return ONLY the JSON object, no additional text or markdown.`;
 
     console.log(`Essay toolkit action: ${action}, text length: ${essayContent.length}`);
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": ANTHROPIC_API_KEY2,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4096,
-        system: systemPrompt,
-        messages: [
-          { role: "user", content: userPrompt }
-        ],
-      }),
-    });
+    const content = await callAI({ systemPrompt, userPrompt, maxTokens: 4096 });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Anthropic API error:", response.status, errorText);
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      return new Response(
-        JSON.stringify({ error: "AI analysis failed" }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const data = await response.json();
-    const content = data.content?.[0]?.text;
     if (!content) {
       return new Response(
-        JSON.stringify({ error: "Empty AI response" }),
+        JSON.stringify({ error: "AI analysis failed" }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -153,7 +114,6 @@ Return ONLY the JSON object, no additional text or markdown.`;
       );
     }
 
-    
     const result = JSON.parse(jsonMatch[0]);
     return new Response(
       JSON.stringify(result),
