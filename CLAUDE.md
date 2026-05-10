@@ -15,10 +15,17 @@ There are no automated tests in this project.
 
 ### Supabase Edge Functions (Deno)
 
-Edge functions live in `supabase/functions/` and run in Deno. To deploy:
+Edge functions live in `supabase/functions/` and run in Deno. To deploy all functions:
 ```bash
-supabase functions deploy <function-name>
+SUPABASE_ACCESS_TOKEN=<token> supabase functions deploy --project-ref fkvfngdwblbalrompzdj
 ```
+
+To deploy a single function:
+```bash
+SUPABASE_ACCESS_TOKEN=<token> supabase functions deploy <function-name> --project-ref fkvfngdwblbalrompzdj
+```
+
+The token is in `.env` as `SUPABASE_ACCESS_TOKEN`. Use `--project-ref` instead of `supabase link` — it works without an interactive terminal.
 
 ## Architecture
 
