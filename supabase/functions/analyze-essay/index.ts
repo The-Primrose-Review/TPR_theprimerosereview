@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { callAI } from "../_shared/ai-client.ts";
+import { authenticate, checkRateLimit } from "../_shared/rate-limiter.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,23 +40,18 @@ serve(async (req) => {
   }
 
   try {
+    const { userId, error: authError } = await authenticate(req);
+    if (authError) return authError;
+
+    const rateLimitError = await checkRateLimit(userId, 'analyze-essay', 20);
+    if (rateLimitError) return rateLimitError;
+
     const { essayContent, prompt } = await req.json();
 
     if (!essayContent) {
       return new Response(
         JSON.stringify({ error: "Essay content is required" }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const ANTHROPIC_API_KEY2 = Deno.env.get("ANTHROPIC_API_KEY2");
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-
-    if (!ANTHROPIC_API_KEY2 && !LOVABLE_API_KEY) {
-      console.error("No AI API keys configured");
-      return new Response(
-        JSON.stringify({ error: "AI service not configured" }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -114,74 +111,7 @@ IMPORTANT:
 ${essayContent}
 ---`;
 
-    let content: string | null = null;
-
-    // Try Anthropic first
-    if (ANTHROPIC_API_KEY2) {
-      console.log("Analyzing essay with Anthropic Claude...");
-      try {
-        const anthropicResponse = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: {
-            "x-api-key": ANTHROPIC_API_KEY2,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "claude-sonnet-4-20250514",
-            max_tokens: 4096,
-            system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
-            messages: [{ role: "user", content: userPrompt }],
-          }),
-        });
-
-        if (anthropicResponse.ok) {
-          const data = await anthropicResponse.json();
-          content = data.content?.[0]?.text ?? null;
-          if (content) console.log("Anthropic response received");
-          else console.warn("Empty content from Anthropic, falling back to Gemini");
-        } else {
-          const errorText = await anthropicResponse.text();
-          console.warn(`Anthropic API error ${anthropicResponse.status}: ${errorText} — falling back to Gemini`);
-        }
-      } catch (err) {
-        console.warn("Anthropic request failed:", err, "— falling back to Gemini");
-      }
-    }
-
-    // Fallback to Gemini 2.5 Flash via Lovable gateway
-    if (!content && LOVABLE_API_KEY) {
-      console.log("Analyzing essay with Gemini 2.5 Flash (fallback)...");
-      try {
-        const geminiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt },
-            ],
-            temperature: 0.7,
-          }),
-        });
-
-        if (geminiResponse.ok) {
-          const data = await geminiResponse.json();
-          content = data.choices?.[0]?.message?.content ?? null;
-          if (content) console.log("Gemini fallback response received");
-          else console.error("Empty content from Gemini fallback");
-        } else {
-          const errorText = await geminiResponse.text();
-          console.error(`Gemini fallback error ${geminiResponse.status}: ${errorText}`);
-        }
-      } catch (err) {
-        console.error("Gemini fallback request failed:", err);
-      }
-    }
+    const content = await callAI({ systemPrompt, userPrompt, maxTokens: 4096, fallbackToGemini: true });
 
     if (!content) {
       return new Response(
@@ -190,7 +120,6 @@ ${essayContent}
       );
     }
 
-    
     let analysisResult: AnalysisResult;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -208,7 +137,6 @@ ${essayContent}
       );
     }
 
-    // Validate and find actual positions in the essay
     const validatedIssues = analysisResult.issues
       .map((issue, index) => {
         const startIndex = essayContent.indexOf(issue.highlightedText);

@@ -1,17 +1,6 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-
-const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY2');
-
-// Initialize Supabase client for authentication validation
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-console.log(`Anthropic API Key available: ${anthropicKey ? 'Yes (length: ' + anthropicKey.length + ')' : 'No'}`);
-if (!anthropicKey) {
-  console.error("Anthropic API key is missing! Please set ANTHROPIC_API_KEY2 in your environment variables.");
-}
+import { callAI } from "../_shared/ai-client.ts";
+import { authenticate, checkRateLimit } from "../_shared/rate-limiter.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,73 +8,19 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Validate authentication
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Authorization header required' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const { userId, error: authError } = await authenticate(req);
+    if (authError) return authError;
 
-    // Create Supabase client with service role for JWT validation
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Verify JWT token and get user
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid or expired token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Rate limiting: 10 requests per hour per user
-    const now = new Date();
-    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-    
-    const { data: recentRequests, error: rateLimitError } = await supabase
-      .from('api_usage_log')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('function_name', 'generate-personal-statement')
-      .gte('created_at', oneHourAgo.toISOString())
-      .limit(11); // Check for 11 to see if limit exceeded
-
-    if (rateLimitError) {
-      console.error('Error checking rate limit:', rateLimitError);
-      // Continue anyway - don't block on rate limit check failure
-    } else if (recentRequests && recentRequests.length >= 10) {
-      return new Response(
-        JSON.stringify({ error: 'Rate limit exceeded. Please try again in an hour.' }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Log this request for rate limiting
-    const { error: logError } = await supabase
-      .from('api_usage_log')
-      .insert({
-        user_id: user.id,
-        function_name: 'generate-personal-statement',
-        created_at: now.toISOString()
-      });
-
-    if (logError) {
-      console.error('Error logging API usage:', logError);
-      // Continue anyway - don't block on logging failure
-    }
+    const rateLimitError = await checkRateLimit(userId, 'generate-personal-statement', 10);
+    if (rateLimitError) return rateLimitError;
 
     const { answers } = await req.json();
-    
+
     if (!answers || typeof answers !== 'object') {
       return new Response(
         JSON.stringify({ error: 'No answers provided or invalid format' }),
@@ -93,16 +28,8 @@ serve(async (req) => {
       );
     }
 
-    if (!anthropicKey) {
-      return new Response(
-        JSON.stringify({ error: 'Anthropic API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Build dynamic field list only for fields with actual values
     const dynamicFields = [];
-    
+
     if (answers.gender) dynamicFields.push(`- Gender: ${answers.gender}`);
     if (answers.age_range) dynamicFields.push(`- Age: ${answers.age_range}`);
     if (answers.degree_type) dynamicFields.push(`- Degree Type: ${answers.degree_type}`);
@@ -120,8 +47,7 @@ serve(async (req) => {
     if (answers.years_experience) dynamicFields.push(`- Years Experience: ${answers.years_experience}`);
     if (answers.program) dynamicFields.push(`- Program: ${answers.program}`);
     if (answers.field_of_study) dynamicFields.push(`- Field of Study: ${answers.field_of_study}`);
-    
-    // Parse answers JSON field if it exists and add non-empty values
+
     if (answers.answers && typeof answers.answers === 'object') {
       Object.entries(answers.answers).forEach(([key, value]) => {
         if (value && value !== '') {
@@ -130,11 +56,12 @@ serve(async (req) => {
       });
     }
 
-    // Build our prompt
-    const prompt = `Using the following user-provided inputs:
+    const systemPrompt = 'You are an expert at writing compelling personal statements for university applications. You create highly personalized, authentic statements that showcase the applicant\'s unique story, motivations, and fit for their chosen program.';
+
+    const userPrompt = `Using the following user-provided inputs:
 ${dynamicFields.length > 0 ? dynamicFields.join('\n') : '- No additional details provided'}
 
-Write a professional and compelling personal statement suitable for a university application. 
+Write a professional and compelling personal statement suitable for a university application.
 
 You must:
 - Use the free-text responses ("personal story" and "motivation") directly in the essay. Integrate their language and content authentically and meaningfully.
@@ -150,40 +77,22 @@ Ensure the statement follows these criteria:
 7. University-Specific Criteria – Adapt if ${answers.universities || answers.university_name || 'the university'} is specified.
 8. Word Count Compliance – Stay between 350 to 650 words if no other limit is given.`;
 
-    console.log("Calling Anthropic API to generate personal statement");
+    console.log("Calling AI to generate personal statement");
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
-        system: [{ type: "text", text: 'You are an expert at writing compelling personal statements for university applications. You create highly personalized, authentic statements that showcase the applicant\'s unique story, motivations, and fit for their chosen program.', cache_control: { type: "ephemeral" } }],
-        messages: [{ role: 'user', content: prompt }],
-      }),
+    const personalStatement = await callAI({
+      systemPrompt,
+      userPrompt,
+      model: 'claude-sonnet-4-6',
+      maxTokens: 1024,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("Anthropic API error:", errorData);
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Rate limit reached. Please try again shortly.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+    if (!personalStatement) {
       return new Response(
-        JSON.stringify({ error: 'Failed to generate personal statement', details: errorData }),
+        JSON.stringify({ error: 'Failed to generate personal statement' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const data = await response.json();
-    const personalStatement = data.content[0].text;
     console.log("Successfully generated personal statement");
 
     return new Response(

@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { callAI } from "../_shared/ai-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,13 +13,8 @@ serve(async (req) => {
 
   try {
     const { studentAnswers, counselorNotes, teacherAnswers, studentName, refereeName, refereeRole } = await req.json();
-    
-    const ANTHROPIC_API_KEY2 = Deno.env.get("ANTHROPIC_API_KEY2");
-    if (!ANTHROPIC_API_KEY2) {
-      throw new Error("ANTHROPIC_API_KEY2 is not configured");
-    }
 
-    const systemPrompt = `You are the world's best college counselor and recommendation letter writer. 
+    const systemPrompt = `You are the world's best college counselor and recommendation letter writer.
 Your task is to take the student's information and transform it into a compelling, authentic recommendation letter.
 
 CRITICAL RULES:
@@ -58,45 +54,7 @@ Write a professional recommendation letter that captures the essence of this stu
 
     console.log("Sending request to Anthropic Claude...");
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": ANTHROPIC_API_KEY2,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4096,
-        system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
-        messages: [
-          { role: "user", content: userPrompt },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Payment required. Please add credits to your workspace." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      
-      throw new Error(`AI gateway error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const generatedLetter = data.content?.[0]?.text;
+    const generatedLetter = await callAI({ systemPrompt, userPrompt, maxTokens: 4096 });
 
     if (!generatedLetter) {
       throw new Error("No content generated");
