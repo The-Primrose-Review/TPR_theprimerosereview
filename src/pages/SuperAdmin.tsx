@@ -24,7 +24,7 @@ import {
   Search, LogOut, RefreshCw, Download,
   Users, Building2, GraduationCap, UserCircle, Shield,
   Trash2, ArrowLeftRight, MessageSquare, Send,
-  Activity, FileText, BookOpen, Award, TrendingUp, Clock, CheckCircle,
+  Activity, FileText, BookOpen, Award, TrendingUp, Clock, CheckCircle, Mail,
 } from "lucide-react";
 import { toast } from "sonner";
 import primroseLogo from "@/assets/primrose-logo.png";
@@ -111,6 +111,11 @@ const SuperAdmin = () => {
   const [reassignTarget, setReassignTarget] = useState<PlatformUser | null>(null);
   const [reassignCounselorId, setReassignCounselorId] = useState("");
   const [reassigning, setReassigning] = useState(false);
+
+  // ── Bulk invite state ─────────────────────────────────────────
+  const [bulkInviteOpen, setBulkInviteOpen] = useState(false);
+  const [bulkInviteEmails, setBulkInviteEmails] = useState("");
+  const [bulkInviteSending, setBulkInviteSending] = useState(false);
 
   // ── Message state ─────────────────────────────────────────────
   const [msgTarget, setMsgTarget] = useState<PlatformUser | null>(null);
@@ -331,6 +336,39 @@ const SuperAdmin = () => {
     setMsgText("");
   };
 
+  // ── Bulk invite handler ──────────────────────────────────────
+  const handleBulkInvite = async () => {
+    const REFERRAL_LINK = "https://www.primrosecrm.com/signup?invite=9849f6d9-1780-4ba5-9f58-c0ce65cdd730";
+
+    const lines = bulkInviteEmails.split("\n").map(l => l.trim()).filter(Boolean);
+    const recipients = lines.map(line => {
+      const [email, ...nameParts] = line.split(",");
+      return { email: email.trim(), name: nameParts.join(",").trim() || undefined };
+    });
+
+    if (recipients.length === 0) {
+      toast.error("Please enter at least one email address");
+      return;
+    }
+
+    setBulkInviteSending(true);
+    const { data, error } = await supabase.functions.invoke("send-bulk-invite", {
+      body: { recipients, referralLink: REFERRAL_LINK },
+    });
+    setBulkInviteSending(false);
+
+    if (error) {
+      toast.error(error.message || "Failed to send invites");
+      return;
+    }
+
+    toast.success(`Sent ${data.sent} invite${data.sent !== 1 ? "s" : ""}${data.failed > 0 ? `, ${data.failed} failed` : ""}`);
+    if (data.failed === 0) {
+      setBulkInviteOpen(false);
+      setBulkInviteEmails("");
+    }
+  };
+
   // ── Render ───────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50">
@@ -347,6 +385,10 @@ const SuperAdmin = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button size="sm" onClick={() => setBulkInviteOpen(true)}>
+            <Mail className="h-4 w-4 mr-2" />
+            Send Bulk Invites
+          </Button>
           <Button variant="outline" size="sm" onClick={() => { fetchUsers(); fetchActivity(); }} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
             Refresh
@@ -776,6 +818,45 @@ const SuperAdmin = () => {
           <p className="text-xs text-gray-400">
             The student will see this in their Messages section.
           </p>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Bulk Invite Dialog ── */}
+      <Dialog open={bulkInviteOpen} onOpenChange={open => { if (!open) { setBulkInviteOpen(false); setBulkInviteEmails(""); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-purple-600" />
+              Send Bulk Student Invites
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-gray-500">
+              Paste student emails below — one per line. Optionally include a name after a comma.<br />
+              <span className="text-gray-400">e.g. <code>student@school.org</code> or <code>student@school.org, Jane Smith</code></span>
+            </p>
+            <Textarea
+              placeholder={"student1@school.org\nstudent2@school.org, John Doe\nstudent3@school.org"}
+              value={bulkInviteEmails}
+              onChange={e => setBulkInviteEmails(e.target.value)}
+              className="min-h-[180px] font-mono text-sm"
+            />
+            <div className="bg-purple-50 border border-purple-200 rounded-lg px-4 py-3 text-xs text-purple-700">
+              Each student will receive Robert's referral link so they are automatically connected to his roster on sign-up.
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setBulkInviteOpen(false); setBulkInviteEmails(""); }}>
+              Cancel
+            </Button>
+            <Button onClick={handleBulkInvite} disabled={bulkInviteSending || !bulkInviteEmails.trim()}>
+              {bulkInviteSending ? (
+                <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Sending…</>
+              ) : (
+                <><Send className="h-4 w-4 mr-2" />Send Invites</>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
