@@ -54,22 +54,11 @@ useEffect(() => {
     if (inviteCodeParam) setInvitationCode(inviteCodeParam);
   } else if (inviteCodeParam) {
     setSelectedRole('student');
-    // Fetch counselor's school name to display as locked field
     (async () => {
-      const { data: inviteData } = await supabase
-        .from('counselor_invites')
-        .select('counselor_id')
-        .eq('invite_code', inviteCodeParam)
-        .maybeSingle();
-      if (inviteData) {
-        const { data: counselorProfile } = await supabase
-          .from('profiles')
-          .select('school_id, schools(name)')
-          .eq('user_id', inviteData.counselor_id)
-          .maybeSingle();
-        const name = (counselorProfile?.schools as { name: string } | null)?.name;
-        if (name) setInviteSchoolName(name);
-      }
+      const { data: schoolName } = await supabase.rpc('get_school_name_by_invite', {
+        invite_code_param: inviteCodeParam,
+      });
+      if (schoolName) setInviteSchoolName(schoolName);
     })();
   }
 }, [inviteCodeParam, roleParam]);
