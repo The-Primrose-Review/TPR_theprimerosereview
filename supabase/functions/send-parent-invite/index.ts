@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { parentEmail, parentName, studentName, counselorCode, appUrl } = await req.json();
+    const { parentEmail, parentName, counselorCode, appUrl } = await req.json();
 
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY is not configured");
@@ -21,8 +21,8 @@ serve(async (req) => {
     }
 
     const registrationUrl = `${appUrl}/signup?invite=${counselorCode}&role=parent`;
+    const studentUrl = `${appUrl}/signup?invite=${counselorCode}`;
     const displayName = parentName || "there";
-    const displayStudent = studentName || "your child";
 
     const html = `
 <!DOCTYPE html>
@@ -30,14 +30,14 @@ serve(async (req) => {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>You're invited to The Primrose Review</title>
+  <title>Introducing The Primrose Review – BISW</title>
 </head>
 
 <body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:40px 20px;">
     <tr>
       <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.08);">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.08);">
 
           <!-- Header -->
           <tr>
@@ -56,66 +56,88 @@ serve(async (req) => {
             <td style="padding:40px;">
 
               <p style="margin:0 0 20px;color:#111827;font-size:16px;">
-                Hi ${displayName},
+                Dear Parents,
               </p>
 
               <p style="margin:0 0 16px;color:#374151;font-size:16px;line-height:1.7;">
-                <strong>${displayStudent}</strong> has joined <strong>The Primrose Review</strong> — a college counseling platform — and has added you as their parent/guardian.
+                We're excited to introduce <strong>The Primrose Review</strong>, a new university admissions support platform that the British International School of Washington will begin using with students as part of the college application process.
               </p>
 
-              <p style="margin:0 0 28px;color:#374151;font-size:16px;line-height:1.7;">
-                Create your parent account to stay updated on their applications, essays, and deadlines.
+              <p style="margin:0 0 16px;color:#374151;font-size:16px;line-height:1.7;">
+                Over the past few months, we've been working closely with Mrs. Neela Choudhury, Head of Secondary, and the BISW leadership team to thoughtfully introduce a platform that can better support students during one of the most important and demanding stages of their academic journey.
               </p>
 
-              <!-- How to register -->
-              <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:20px 24px;margin-bottom:28px;">
-                <p style="margin:0 0 12px;color:#111827;font-size:14px;font-weight:600;">
-                  How to get started:
-                </p>
-                <table cellpadding="0" cellspacing="0">
-                  <tr>
-                    <td style="color:#6d28d9;font-size:14px;font-weight:700;padding-right:10px;vertical-align:top;">1.</td>
-                    <td style="color:#6b7280;font-size:14px;line-height:1.6;">Click the <strong>Create Account</strong> button below</td>
-                  </tr>
-                  <tr>
-                    <td style="color:#6d28d9;font-size:14px;font-weight:700;padding-right:10px;vertical-align:top;">2.</td>
-                    <td style="color:#6b7280;font-size:14px;line-height:1.6;">Your invite code will be pre-filled automatically</td>
-                  </tr>
-                  <tr>
-                    <td style="color:#6d28d9;font-size:14px;font-weight:700;padding-right:10px;vertical-align:top;">3.</td>
-                    <td style="color:#6b7280;font-size:14px;line-height:1.6;">Fill in your details and create a password</td>
-                  </tr>
-                </table>
-              </div>
-
-              <!-- Code box -->
-              <p style="margin:0 0 10px;color:#111827;font-size:14px;font-weight:600;">
-                Your invite code (copy &amp; paste if needed):
+              <p style="margin:0 0 8px;color:#374151;font-size:16px;line-height:1.7;">
+                <strong>The goal of this partnership is simple:</strong>
               </p>
-              <div style="background:#1e1b4b;border-radius:10px;padding:20px;margin-bottom:32px;text-align:center;">
-                <span style="display:inline-block;color:#c4b5fd;font-family:'Courier New',Courier,monospace;font-size:26px;font-weight:700;letter-spacing:6px;word-break:break-all;">
-                  ${counselorCode}
-                </span>
-              </div>
+              <p style="margin:0 0 16px;color:#374151;font-size:16px;line-height:1.7;font-style:italic;">
+                To provide students with a more structured, organized, and supportive admissions experience, while helping them maintain confidence, authenticity, and ownership over their applications.
+              </p>
 
-              <!-- CTA -->
-              <div style="text-align:center;margin-bottom:32px;">
-                <a href="${registrationUrl}"
-                   style="display:inline-block;background:linear-gradient(135deg,#6d28d9,#9333ea);color:#ffffff;text-decoration:none;padding:15px 36px;border-radius:10px;font-size:16px;font-weight:600;">
-                  Create Parent Account &rarr;
-                </a>
-              </div>
+              <p style="margin:0 0 16px;color:#374151;font-size:16px;line-height:1.7;">
+                As technology and LLM models continue to evolve within education, students are increasingly using digital tools independently. One of the reasons BISW chose to partner with The Primrose Review is our shared belief that technology should support student thinking, reflection, and growth — not replace it.
+              </p>
 
-              <!-- Fallback link -->
-              <div style="border-top:1px solid #f3f4f6;padding-top:20px;">
-                <p style="margin:0 0 6px;color:#9ca3af;font-size:13px;">
-                  If the button doesn't work, paste this link into your browser:
-                </p>
-        
-                <a href="${registrationUrl}" style="color:#7c3aed;font-size:13px;word-break:break-all;">
-                  ${registrationUrl}
-                </a>
-              </div>
+              <p style="margin:0 0 12px;color:#374151;font-size:16px;line-height:1.7;">
+                The platform is designed to help students:
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+                <tr><td style="color:#6d28d9;font-size:15px;padding-right:8px;vertical-align:top;">✓</td><td style="color:#374151;font-size:15px;line-height:1.8;">Organize applications and deadlines</td></tr>
+                <tr><td style="color:#6d28d9;font-size:15px;padding-right:8px;vertical-align:top;">✓</td><td style="color:#374151;font-size:15px;line-height:1.8;">Develop and strengthen personal statements</td></tr>
+                <tr><td style="color:#6d28d9;font-size:15px;padding-right:8px;vertical-align:top;">✓</td><td style="color:#374151;font-size:15px;line-height:1.8;">Receive structured counselor feedback</td></tr>
+                <tr><td style="color:#6d28d9;font-size:15px;padding-right:8px;vertical-align:top;">✓</td><td style="color:#374151;font-size:15px;line-height:1.8;">Collaborate more effectively with school staff</td></tr>
+                <tr><td style="color:#6d28d9;font-size:15px;padding-right:8px;vertical-align:top;">✓</td><td style="color:#374151;font-size:15px;line-height:1.8;">Explore universities and opportunities</td></tr>
+                <tr><td style="color:#6d28d9;font-size:15px;padding-right:8px;vertical-align:top;">✓</td><td style="color:#374151;font-size:15px;line-height:1.8;">Build applications that feel thoughtful, personal, and authentic</td></tr>
+              </table>
+
+              <p style="margin:0 0 16px;color:#374151;font-size:16px;line-height:1.7;">
+                Importantly, students will continue working directly with BISW counselors and staff throughout the process. The platform simply creates a more modern, collaborative, and transparent environment around that guidance.
+              </p>
+
+              <p style="margin:0 0 12px;color:#374151;font-size:16px;line-height:1.7;">
+                In addition, you as parents will have access to your own dashboard, where you will be able to:
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+                <tr><td style="color:#6d28d9;font-size:15px;padding-right:8px;vertical-align:top;">✓</td><td style="color:#374151;font-size:15px;line-height:1.8;">View your child's application progress</td></tr>
+                <tr><td style="color:#6d28d9;font-size:15px;padding-right:8px;vertical-align:top;">✓</td><td style="color:#374151;font-size:15px;line-height:1.8;">Access helpful admissions resources and updates</td></tr>
+                <tr><td style="color:#6d28d9;font-size:15px;padding-right:8px;vertical-align:top;">✓</td><td style="color:#374151;font-size:15px;line-height:1.8;">Communicate directly with Robert Ramey, Director of College Counseling</td></tr>
+                <tr><td style="color:#6d28d9;font-size:15px;padding-right:8px;vertical-align:top;">✓</td><td style="color:#374151;font-size:15px;line-height:1.8;">Better understand key stages and milestones throughout the admissions journey</td></tr>
+              </table>
+
+              <!-- Divider -->
+              <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 28px;" />
+
+              <!-- Parent activation -->
+              <p style="margin:0 0 8px;color:#111827;font-size:15px;font-weight:600;">
+                Activate your parent account:
+              </p>
+              <p style="margin:0 0 20px;">
+                <a href="${registrationUrl}" style="color:#7c3aed;font-size:15px;word-break:break-all;">${registrationUrl}</a>
+              </p>
+
+              <!-- Student activation -->
+              <p style="margin:0 0 8px;color:#111827;font-size:15px;font-weight:600;">
+                Your child's student account can be accessed here:
+              </p>
+              <p style="margin:0 0 28px;">
+                <a href="${studentUrl}" style="color:#7c3aed;font-size:15px;word-break:break-all;">${studentUrl}</a>
+              </p>
+
+              <p style="margin:0 0 16px;color:#374151;font-size:16px;line-height:1.7;">
+                The Primrose Review has supported students applying to leading universities across the United States, United Kingdom, and globally, and we are very excited to begin this partnership with BISW.
+              </p>
+
+              <p style="margin:0 0 24px;color:#374151;font-size:16px;line-height:1.7;">
+                We look forward to supporting your family throughout this exciting journey.
+              </p>
+
+              <p style="margin:0;color:#374151;font-size:15px;line-height:1.8;">
+                Warm regards,<br />
+                <strong>Tamir Oren</strong><br />
+                Founder &amp; CEO<br />
+                The Primrose Review
+              </p>
+
             </td>
           </tr>
 
@@ -123,7 +145,7 @@ serve(async (req) => {
           <tr>
             <td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 40px;text-align:center;">
               <p style="margin:0;color:#9ca3af;font-size:12px;line-height:1.6;">
-                This invitation was sent because a student listed you as their parent/guardian.<br />
+                This email was sent as part of the BISW &times; The Primrose Review partnership.<br />
                 If you didn't expect this email, you can safely ignore it.
               </p>
             </td>
@@ -145,7 +167,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: "The Primrose Review <team@primrosecrm.com>",   // ← swap for your verified domain email when ready
         to: parentEmail,
-        subject: `You're invited to follow ${displayStudent}'s college journey`,
+        subject: `Introducing The Primrose Review – BISW College Application Platform`,
         html,
       }),
     });
@@ -160,7 +182,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("send-parent-invite error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
