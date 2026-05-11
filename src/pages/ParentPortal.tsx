@@ -1,15 +1,12 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
-  User, Mail, GraduationCap, CheckCircle, Clock, AlertTriangle,
-  Send, BookOpen, Sparkles, DollarSign, TrendingUp, Trophy,
+  GraduationCap, CheckCircle, Clock, AlertTriangle,
+  BookOpen, Sparkles, DollarSign, TrendingUp, Trophy,
   ChevronDown, ChevronUp, Star, Calendar, Zap, Shield,
 } from "lucide-react";
-import { toast } from "sonner";
 import { useParentPortalData } from "@/hooks/useParentPortalData";
 
 // ── Static mock data (used when no real student is linked) ────────────────────
@@ -218,7 +215,6 @@ const urgencyBar = (level: "red" | "amber" | "green") => ({
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const ParentPortal = () => {
-  const [message, setMessage] = useState("");
   const [openLesson, setOpenLesson] = useState<string | null>(null);
 
   const live = useParentPortalData();
@@ -242,13 +238,6 @@ const ParentPortal = () => {
   const satScore = live.hasStudent
     ? (live.studentAcademics?.sat_score ?? null)
     : 1450;
-  const counselorName = live.hasStudent
-    ? (live.counselorProfile?.full_name ?? "Ms. Johnson")
-    : "Ms. Johnson";
-  const counselorEmail = live.hasStudent
-    ? (live.counselorProfile?.email ?? "johnson@primrose.edu")
-    : "johnson@primrose.edu";
-
   const journeyStages = live.hasStudent ? live.journeyStages : MOCK_JOURNEY;
   const completedStageCount = journeyStages.filter(s => s.completed).length;
 
@@ -308,12 +297,6 @@ const ParentPortal = () => {
         })),
       ]
     : MOCK_WEEK;
-
-  const handleSendMessage = () => {
-    if (!message.trim()) { toast.error("Please write a message"); return; }
-    toast.success("Message sent to counselor");
-    setMessage("");
-  };
 
   // Circumference for the SVG progress ring (r=38)
   const CIRC = 2 * Math.PI * 38; // ≈ 238.76
@@ -442,10 +425,8 @@ const ParentPortal = () => {
         ))}
       </div>
 
-      {/* ── Needs Attention + Counselor ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Needs Attention */}
-        <Card className="lg:col-span-2 p-6 rounded-2xl border border-slate-100 shadow-sm">
+      {/* ── Needs Attention ── */}
+      <Card className="p-6 rounded-2xl border border-slate-100 shadow-sm">
           <h3 className="text-base font-semibold text-foreground mb-1 flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-amber-500" />
             Needs Attention
@@ -485,42 +466,7 @@ const ParentPortal = () => {
               {firstName}'s timeline is progressing well. Most applicants at this stage have fewer completed essays and applications. Keep the momentum going.
             </p>
           </div>
-        </Card>
-
-        {/* Counselor card */}
-        <Card className="p-6 rounded-2xl border border-slate-100 shadow-sm">
-          <h3 className="text-base font-semibold text-foreground mb-4 flex items-center gap-2">
-            <GraduationCap className="h-5 w-5 text-violet-500" />
-            Your Counselor
-          </h3>
-
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
-              <User className="h-6 w-6 text-violet-600" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">{counselorName}</p>
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <Mail className="h-3 w-3" /> {counselorEmail}
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Textarea
-              placeholder={`Write a message to ${counselorName}...`}
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-              rows={4}
-              className="text-sm resize-none"
-            />
-            <Button className="w-full gap-2 bg-violet-600 hover:bg-violet-700" onClick={handleSendMessage}>
-              <Send className="h-4 w-4" />
-              Send Message
-            </Button>
-          </div>
-        </Card>
-      </div>
+      </Card>
 
       {/* ── University Tracker ── */}
       <Card className="p-6 rounded-2xl border border-slate-100 shadow-sm">
