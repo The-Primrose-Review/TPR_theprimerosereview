@@ -18,6 +18,27 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'counselor' | 'student' | 'parent' | 'principal' | null>(roleParam);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success("Password reset email sent! Check your inbox.");
+      setShowForgotPassword(false);
+      setForgotEmail("");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send reset email");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
 
   const getRoleIcon = (role: string) => {
     switch (role) {
@@ -120,28 +141,47 @@ const Auth = () => {
         </div>
 
         <Card className="p-6 space-y-6">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-foreground">Sign in as:</h1>
-          </div>
-
-          {/* Role Selection */}
-          {!selectedRole && !isAdminLogin && (
-            <div className="grid grid-cols-2 gap-3">
-              {(['counselor', 'student', 'parent', 'principal'] as const).map((role) => (
-                <button
-                  key={role}
-                  onClick={() => setSelectedRole(role)}
-                  className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 hover:border-primary/30 transition-all"
-                >
-                  {getRoleIcon(role)}
-                  <span className="text-sm font-medium">{getRoleLabel(role)}</span>
-                </button>
-              ))}
+          {!showForgotPassword && (
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-foreground">Sign in as:</h1>
             </div>
           )}
 
+          {/* Forgot Password View */}
+          {showForgotPassword && (
+            <>
+              <div className="text-center">
+                <h2 className="text-lg font-semibold">Reset your password</h2>
+                <p className="text-sm text-muted-foreground mt-1">Enter your email and we'll send you a reset link.</p>
+              </div>
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="forgot-email">Email</Label>
+                  <Input
+                    id="forgot-email"
+                    type="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    required
+                    placeholder="Enter your email"
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={forgotLoading}>
+                  {forgotLoading ? 'Sending...' : 'Send Reset Link'}
+                </Button>
+              </form>
+              <button
+                type="button"
+                className="block w-full text-sm text-muted-foreground hover:underline text-center"
+                onClick={() => setShowForgotPassword(false)}
+              >
+                Back to sign in
+              </button>
+            </>
+          )}
+
           {/* Login Form */}
-          {(selectedRole || isAdminLogin) && (
+          {!showForgotPassword && (selectedRole || isAdminLogin) && (
             <>
               <div className="flex items-center gap-2 text-muted-foreground text-sm">
                 {getRoleIcon(selectedRole)}
@@ -162,7 +202,16 @@ const Auth = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Password</Label>
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline"
+                      onClick={() => { setForgotEmail(email); setShowForgotPassword(true); }}
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
                   <Input
                     id="password"
                     type="password"
@@ -189,8 +238,24 @@ const Auth = () => {
             </>
           )}
 
-          {/* Bottom: Sign up link — hidden for students (they join via referral link) */}
-          {selectedRole !== 'student' && (
+          {/* Role Selection — only show when no role selected and not in forgot-password view */}
+          {!showForgotPassword && !selectedRole && !isAdminLogin && (
+            <div className="grid grid-cols-2 gap-3">
+              {(['counselor', 'student', 'parent', 'principal'] as const).map((role) => (
+                <button
+                  key={role}
+                  onClick={() => setSelectedRole(role)}
+                  className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 hover:border-primary/30 transition-all"
+                >
+                  {getRoleIcon(role)}
+                  <span className="text-sm font-medium">{getRoleLabel(role)}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Bottom: Sign up link — hidden for students and forgot-password view */}
+          {!showForgotPassword && selectedRole !== 'student' && (
             <div className="text-center pt-2 border-t border-border">
               <span className="text-sm text-muted-foreground">Don't have an account? </span>
               <button

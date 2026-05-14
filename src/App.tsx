@@ -60,6 +60,7 @@ import EssayToolkit from "./pages/EssayToolkit";
 import PersonalEssay from "./pages/PersonalEssay";
 import StudentFeedback from "./pages/StudentFeedback";
 import SuperAdmin from "./pages/SuperAdmin";
+import ResetPassword from "./pages/ResetPassword";
 import EvaluationEngine from "./pages/EvaluationEngine";
 import PrimroseLab from "./pages/PrimroseLab";
 import ScholarshipFinder from "./pages/ScholarshipFinder";
@@ -73,7 +74,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthState();
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
-  const noSidebarRoutes = ['/', '/auth', '/demo', '/product-demo', '/demo-maker'];
+  const noSidebarRoutes = ['/', '/auth', '/demo', '/product-demo', '/demo-maker', '/reset-password'];
   const isPreviewMode = location.pathname.startsWith('/preview/');
   const isStudentRoute =
   [
@@ -186,6 +187,7 @@ const App = () => {
           <Route path="/demo" element={<Demo />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/teacher-rec/:token" element={<TeacherRecommendationPage />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* ── Counselor-only routes ── */}
           <Route path="/dashboard" element={
