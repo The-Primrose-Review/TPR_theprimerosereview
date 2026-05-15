@@ -79,7 +79,7 @@ const studentStandaloneItems = [...studentTopItems, ...studentBottomItems];
 const studentSections = [
   {
     key: "lab",
-    label: "Lab",
+    label: "Stress-test your idea",
     icon: FlaskRound,
     items: [
       { title: "Primrose Lab", url: "/primrose-lab", icon: FlaskConical },
@@ -87,7 +87,7 @@ const studentSections = [
   },
   {
     key: "engine",
-    label: "Engine",
+    label: "Evaluate your full essay",
     icon: Cpu,
     items: [
       { title: "Evaluation Engine", url: "/evaluation-engine", icon: Zap },
@@ -97,7 +97,7 @@ const studentSections = [
   },
   {
     key: "generate",
-    label: "Generate",
+    label: "Generate and Submit your essay",
     icon: Sparkles,
     items: [
       { title: "My Work", url: "/student-personal-area", icon: BookOpen, tourId: "tour-nav-my-work" },
@@ -288,6 +288,11 @@ export function AppSidebar() {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {studentTopItems.map(item => renderMenuItem(item))}
+                  {open && (
+                    <div className="px-2 pt-3 pb-1">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Essay Journey</p>
+                    </div>
+                  )}
                   {studentSections.map(section => (
                     <Collapsible key={section.key} open={openSections[section.key]} onOpenChange={() => toggleSection(section.key)}>
                       <SidebarMenuItem>
