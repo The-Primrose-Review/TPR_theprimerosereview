@@ -91,6 +91,13 @@ const studentSections = [
     icon: Cpu,
     items: [
       { title: "Evaluation Engine", url: "/evaluation-engine", icon: Zap },
+    ] as NavItem[],
+  },
+  {
+    key: "additional",
+    label: "Additional Tools",
+    icon: Trophy,
+    items: [
       { title: "Scholarship Finder", url: "/scholarship-finder", icon: Trophy },
       { title: "Tuition Calculator", url: "/tuition-calculator", icon: Calculator },
     ] as NavItem[],
@@ -166,7 +173,7 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ lab: true, engine: true, generate: true });
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ lab: true, engine: true, generate: true, additional: true });
 
   const toggleSection = (key: string) =>
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
