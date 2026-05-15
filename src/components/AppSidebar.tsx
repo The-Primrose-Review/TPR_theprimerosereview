@@ -68,13 +68,16 @@ const studentBottomItems: NavItem[] = [{
   icon: MessageSquare,
   badge: 3,
   tourId: "tour-nav-messages",
-}, {
-  title: "Feedback",
-  url: "/student-feedback",
-  icon: Star,
 }];
 
-const studentStandaloneItems = [...studentTopItems, ...studentBottomItems];
+const additionalToolItems: NavItem[] = [
+  { title: "Scholarship Finder", url: "/scholarship-finder", icon: Trophy },
+  { title: "Tuition Calculator", url: "/tuition-calculator", icon: Calculator },
+];
+
+const feedbackItem: NavItem = { title: "Feedback", url: "/student-feedback", icon: Star };
+
+const studentStandaloneItems = [...studentTopItems, ...studentBottomItems, ...additionalToolItems, feedbackItem];
 
 const studentSections = [
   {
@@ -91,15 +94,6 @@ const studentSections = [
     icon: Cpu,
     items: [
       { title: "Evaluation Engine", url: "/evaluation-engine", icon: Zap },
-    ] as NavItem[],
-  },
-  {
-    key: "additional",
-    label: "Additional Tools",
-    icon: Trophy,
-    items: [
-      { title: "Scholarship Finder", url: "/scholarship-finder", icon: Trophy },
-      { title: "Tuition Calculator", url: "/tuition-calculator", icon: Calculator },
     ] as NavItem[],
   },
   {
@@ -173,7 +167,7 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ lab: true, engine: true, generate: true, additional: true });
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ lab: true, engine: true, generate: true });
 
   const toggleSection = (key: string) =>
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
@@ -339,6 +333,13 @@ export function AppSidebar() {
                     </Collapsible>
                   ))}
                   {studentBottomItems.map(item => renderMenuItem(item))}
+                  {open && (
+                    <div className="px-2 pt-3 pb-1">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Additional Tools</p>
+                    </div>
+                  )}
+                  {additionalToolItems.map(item => renderMenuItem(item))}
+                  {renderMenuItem(feedbackItem)}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
