@@ -119,15 +119,13 @@ export const useAuth = () => {
       }
 
       // ── Step 6: Send welcome email (non-fatal) ────────────────
-      fetch('https://fkvfngdwblbalrompzdj.supabase.co/functions/v1/send-welcome-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      supabase.functions.invoke('send-welcome-email', {
+        body: {
           email: formData.email,
           fullName: formData.full_name,
           role: formData.role,
           appUrl: window.location.origin,
-        }),
+        },
       }).catch((err) => console.error('Welcome email failed:', err))
 
       return { user: authData.user, session: authData.session }

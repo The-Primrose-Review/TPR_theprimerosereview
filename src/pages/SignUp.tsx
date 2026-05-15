@@ -297,15 +297,13 @@ useEffect(() => {
 
       // Send welcome email (non-fatal)
       try {
-        await fetch("https://fkvfngdwblbalrompzdj.supabase.co/functions/v1/send-welcome-email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        await supabase.functions.invoke("send-welcome-email", {
+          body: {
             email,
             fullName,
             role: selectedRole,
             appUrl: window.location.origin,
-          }),
+          },
         });
       } catch (e) {
         console.error("Failed to send welcome email:", e);
