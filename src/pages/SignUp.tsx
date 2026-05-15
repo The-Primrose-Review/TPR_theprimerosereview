@@ -3,11 +3,37 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, GraduationCap, Users, UserCircle, Building2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { backgroundStep } from "@/data/steps/background";
+import { ArrowLeft, GraduationCap, Users, UserCircle, Building2, Check, ChevronsUpDown, Search, Plus, X } from "lucide-react";
 import primroseLogo from "@/assets/primrose-logo.png";
+
+const COUNTRIES = [
+  "United States", "United Kingdom", "Canada", "Australia",
+  "Belgium", "Ireland", "Netherlands", "Norway", "South Korea",
+  "Spain", "Switzerland", "Other",
+];
+
+const universityOptions: string[] =
+  ((backgroundStep.questions[0] as any).subQuestions as any[]).find(
+    (q) => q.id === "university"
+  )?.options ?? [];
+
+interface CollegeSlot {
+  country: string;
+  university: string;
+  universityOther: string;
+  open: boolean;
+  search: string;
+}
+
+const emptySlot = (): CollegeSlot => ({
+  country: "", university: "", universityOther: "", open: false, search: "",
+});
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -42,6 +68,17 @@ const Signup = () => {
   const [counselorBio, setCounselorBio] = useState("");
   const [counselorSpecialization, setCounselorSpecialization] = useState("");
   const [counselorYearsOfExperience, setCounselorYearsOfExperience] = useState("");
+
+  // Target university fields (student)
+  const [targetColleges, setTargetColleges] = useState<CollegeSlot[]>([emptySlot()]);
+  const updateCollegeSlot = (index: number, updates: Partial<CollegeSlot>) =>
+    setTargetColleges((prev) =>
+      prev.map((slot, i) => (i === index ? { ...slot, ...updates } : slot))
+    );
+  const addCollegeSlot = () =>
+    setTargetColleges((prev) => [...prev, emptySlot()]);
+  const removeCollegeSlot = (index: number) =>
+    setTargetColleges((prev) => prev.filter((_, i) => i !== index));
 
   // Parent fields
   const [invitationCode, setInvitationCode] = useState("");
@@ -220,6 +257,20 @@ useEffect(() => {
               parent_phone: parentPhone || null,
             });
           if (studentError) throw studentError;
+
+          const collegeRows = targetColleges
+            .map((s) => ({
+              student_id: data.user.id,
+              country: s.country || null,
+              college: s.university === "Other" ? s.universityOther : s.university,
+            }))
+            .filter((r) => r.college);
+          if (collegeRows.length > 0) {
+            const { error: collegesError } = await (supabase as any)
+              .from("student_target_colleges")
+              .insert(collegeRows);
+            if (collegesError) throw collegesError;
+          }
 
           // if (counselorIdParam) {
           //   const { error: assignError } = await supabase
@@ -500,6 +551,131 @@ useEffect(() => {
                       placeholder="+1 (555) 000-0000"
                     />
                   </div>
+
+                  <p className="text-sm font-medium text-muted-foreground pt-2">
+                    Target Universities <span className="font-normal">(optional)</span>
+                  </p>
+
+                  {targetColleges.map((slot, index) => {
+                    const filtered = slot.search.trim()
+                      ? universityOptions.filter((u) =>
+                          u.toLowerCase().includes(slot.search.toLowerCase())
+                        )
+                      : universityOptions;
+                    return (
+                      <div key={index} className="space-y-2 p-3 border rounded-lg bg-muted/20">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-muted-foreground">
+                            University {index + 1}
+                          </span>
+                          {targetColleges.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeCollegeSlot(index)}
+                              className="text-muted-foreground hover:text-destructive"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <select
+                            value={slot.country}
+                            onChange={(e) =>
+                              updateCollegeSlot(index, { country: e.target.value })
+                            }
+                            className="w-full h-9 px-2 rounded-md border border-input bg-background text-sm"
+                          >
+                            <option value="">Country...</option>
+                            {COUNTRIES.map((c) => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
+                          <Popover
+                            open={slot.open}
+                            onOpenChange={(open) => updateCollegeSlot(index, { open })}
+                          >
+                            <PopoverTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                role="combobox"
+                                className="w-full h-9 justify-between font-normal text-sm px-2"
+                              >
+                                <span className={cn(!slot.university && "text-muted-foreground text-xs")}>
+                                  {slot.university || "University..."}
+                                </span>
+                                <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                              <div className="flex items-center border-b px-3">
+                                <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                                <input
+                                  className="flex h-10 w-full bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
+                                  placeholder="Search..."
+                                  value={slot.search}
+                                  onChange={(e) =>
+                                    updateCollegeSlot(index, { search: e.target.value })
+                                  }
+                                />
+                              </div>
+                              <div className="max-h-60 overflow-y-auto">
+                                {filtered.length === 0 ? (
+                                  <p className="py-4 text-center text-sm text-muted-foreground">
+                                    No university found.
+                                  </p>
+                                ) : (
+                                  filtered.map((u) => (
+                                    <button
+                                      key={u}
+                                      type="button"
+                                      onClick={() =>
+                                        updateCollegeSlot(index, {
+                                          university: u,
+                                          universityOther: "",
+                                          open: false,
+                                          search: "",
+                                        })
+                                      }
+                                      className="relative flex w-full cursor-pointer select-none items-center px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left"
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-3.5 w-3.5 shrink-0",
+                                          slot.university === u ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      {u}
+                                    </button>
+                                  ))
+                                )}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        {slot.university === "Other" && (
+                          <Input
+                            value={slot.universityOther}
+                            onChange={(e) =>
+                              updateCollegeSlot(index, { universityOther: e.target.value })
+                            }
+                            placeholder="Enter university name"
+                            className="h-9 text-sm"
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  <button
+                    type="button"
+                    onClick={addCollegeSlot}
+                    className="flex items-center gap-1.5 text-sm text-primary hover:underline"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add another university
+                  </button>
                 </div>
               )}
 

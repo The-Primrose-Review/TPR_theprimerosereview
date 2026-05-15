@@ -10,6 +10,8 @@ export const generatePersonalStatement = async (answers: Record<string, any>): P
       setTimeout(() => reject(new Error("Function call timed out after 30 seconds")), 30000)
     );
 
+
+
     const { data, error } = await Promise.race([functionCall, timeoutPromise]) as any;
 
     if (error) {
@@ -47,3 +49,5 @@ export const savePersonalStatement = async (title: string, content: string): Pro
     throw error;
   }
 };
+
+

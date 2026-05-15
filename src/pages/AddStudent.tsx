@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
+import { backgroundStep } from "@/data/steps/background";
 import {
   Upload,
   Copy,
@@ -14,14 +17,47 @@ import {
   UserPlus,
   Link2,
   Clock,
-  Mail,
-  Phone,
+  Check,
+  ChevronsUpDown,
+  Search,
+  Plus,
+  X,
+  // Mail,
+  // Phone,
 } from "lucide-react";
+
+const COUNTRIES = [
+  "United States", "United Kingdom", "Canada", "Australia",
+  "Belgium", "Ireland", "Netherlands", "Norway", "South Korea",
+  "Spain", "Switzerland", "Other",
+];
+
+const universityOptions: string[] =
+  ((backgroundStep.questions[0] as any).subQuestions as any[]).find(
+    (q) => q.id === "university"
+  )?.options ?? [];
+
+interface CollegeSlot {
+  country: string;
+  university: string;
+  universityOther: string;
+  open: boolean;
+  search: string;
+}
+
+const emptySlot = (): CollegeSlot => ({
+  country: "",
+  university: "",
+  universityOther: "",
+  open: false,
+  search: "",
+});
 
 const AddStudent = () => {
   const [activeTab, setActiveTab] = useState("manual");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
+  const [counselorSchoolName, setCounselorSchoolName] = useState("");
   const { toast } = useToast();
 
   const [manualForm, setManualForm] = useState({
@@ -36,6 +72,47 @@ const AddStudent = () => {
     graduationYear: "",
     profilePhoto: null as File | null,
   });
+
+  const [targetColleges, setTargetColleges] = useState<CollegeSlot[]>([emptySlot()]);
+
+  const updateCollegeSlot = (index: number, updates: Partial<CollegeSlot>) =>
+    setTargetColleges((prev) =>
+      prev.map((slot, i) => (i === index ? { ...slot, ...updates } : slot))
+    );
+
+  const addCollegeSlot = () =>
+    setTargetColleges((prev) => [...prev, emptySlot()]);
+
+  const removeCollegeSlot = (index: number) =>
+    setTargetColleges((prev) => prev.filter((_, i) => i !== index));
+
+  useEffect(() => {
+    const fetchCounselorSchool = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!profile?.school_id) return;
+
+      const { data: school } = await supabase
+        .from("schools")
+        .select("name")
+        .eq("id", profile.school_id)
+        .maybeSingle();
+
+      if (school?.name) {
+        setCounselorSchoolName(school.name);
+        setManualForm((prev) => ({ ...prev, highSchool: school.name }));
+      }
+    };
+
+    fetchCounselorSchool();
+  }, []);
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,12 +198,40 @@ const AddStudent = () => {
         });
       if (assignError) throw assignError;
 
+      // ── Step 8: Insert target colleges ───────────────────────
+      const collegeRows = targetColleges
+        .map((s) => ({
+          student_id: studentUserId,
+          country: s.country || null,
+          college: s.university === "Other" ? s.universityOther : s.university,
+        }))
+        .filter((r) => r.college);
+      if (collegeRows.length > 0) {
+        const { error: collegesError } = await (supabase as any)
+          .from("student_target_colleges")
+          .insert(collegeRows);
+        if (collegesError) throw collegesError;
+      }
+
+      // Send welcome email (non-fatal)
+      try {
+        await supabase.functions.invoke("send-welcome-email", {
+          body: {
+            email: manualForm.email,
+            fullName: `${manualForm.firstName} ${manualForm.lastName}`,
+            role: "student",
+            appUrl: window.location.origin,
+          },
+        });
+      } catch (e) {
+        console.error("Failed to send welcome email:", e);
+      }
+
       toast({
         title: "Student Added Successfully",
         description: `${manualForm.firstName} ${manualForm.lastName} has been added to your roster.`,
       });
 
-      // Reset form
       setManualForm({
         firstName: "",
         lastName: "",
@@ -135,10 +240,11 @@ const AddStudent = () => {
         gpa: "",
         satScore: "",
         actScore: "",
-        highSchool: "",
+        highSchool: counselorSchoolName,
         graduationYear: "",
         profilePhoto: null,
       });
+      setTargetColleges([emptySlot()]);
     } catch (error: any) {
       toast({
         title: "Failed to add student",
@@ -155,7 +261,6 @@ const AddStudent = () => {
       const { data: { user: counselor } } = await supabase.auth.getUser();
       if (!counselor) throw new Error("You must be logged in");
 
-      // Check if counselor already has an active invite
       const { data: existing } = await supabase
         .from("counselor_invites")
         .select("invite_code")
@@ -212,11 +317,7 @@ const AddStudent = () => {
         </p>
       </div>
 
-      <Tabs
-        value={activeTab}
-        onValueChange={setActiveTab}
-        className="space-y-6"
-      >
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="manual" className="flex items-center gap-2">
             <UserPlus className="h-4 w-4" />
@@ -259,10 +360,7 @@ const AddStudent = () => {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <Label
-                      htmlFor="photo-upload"
-                      className="block text-sm font-medium mb-2"
-                    >
+                    <Label htmlFor="photo-upload" className="block text-sm font-medium mb-2">
                       Profile Photo (Optional)
                     </Label>
                     <input
@@ -276,9 +374,7 @@ const AddStudent = () => {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() =>
-                        document.getElementById("photo-upload")?.click()
-                      }
+                      onClick={() => document.getElementById("photo-upload")?.click()}
                     >
                       <Upload className="h-4 w-4 mr-2" />
                       Upload Photo
@@ -293,12 +389,7 @@ const AddStudent = () => {
                     <Input
                       id="firstName"
                       value={manualForm.firstName}
-                      onChange={(e) =>
-                        setManualForm({
-                          ...manualForm,
-                          firstName: e.target.value,
-                        })
-                      }
+                      onChange={(e) => setManualForm({ ...manualForm, firstName: e.target.value })}
                       required
                     />
                   </div>
@@ -307,12 +398,7 @@ const AddStudent = () => {
                     <Input
                       id="lastName"
                       value={manualForm.lastName}
-                      onChange={(e) =>
-                        setManualForm({
-                          ...manualForm,
-                          lastName: e.target.value,
-                        })
-                      }
+                      onChange={(e) => setManualForm({ ...manualForm, lastName: e.target.value })}
                       required
                     />
                   </div>
@@ -326,9 +412,7 @@ const AddStudent = () => {
                       id="email"
                       type="email"
                       value={manualForm.email}
-                      onChange={(e) =>
-                        setManualForm({ ...manualForm, email: e.target.value })
-                      }
+                      onChange={(e) => setManualForm({ ...manualForm, email: e.target.value })}
                       required
                     />
                   </div>
@@ -338,9 +422,7 @@ const AddStudent = () => {
                       id="phone"
                       type="tel"
                       value={manualForm.phone}
-                      onChange={(e) =>
-                        setManualForm({ ...manualForm, phone: e.target.value })
-                      }
+                      onChange={(e) => setManualForm({ ...manualForm, phone: e.target.value })}
                     />
                   </div>
                 </div>
@@ -356,9 +438,7 @@ const AddStudent = () => {
                       min="0"
                       max="4.0"
                       value={manualForm.gpa}
-                      onChange={(e) =>
-                        setManualForm({ ...manualForm, gpa: e.target.value })
-                      }
+                      onChange={(e) => setManualForm({ ...manualForm, gpa: e.target.value })}
                     />
                   </div>
                   <div>
@@ -369,12 +449,7 @@ const AddStudent = () => {
                       min="400"
                       max="1600"
                       value={manualForm.satScore}
-                      onChange={(e) =>
-                        setManualForm({
-                          ...manualForm,
-                          satScore: e.target.value,
-                        })
-                      }
+                      onChange={(e) => setManualForm({ ...manualForm, satScore: e.target.value })}
                     />
                   </div>
                   <div>
@@ -385,12 +460,7 @@ const AddStudent = () => {
                       min="1"
                       max="36"
                       value={manualForm.actScore}
-                      onChange={(e) =>
-                        setManualForm({
-                          ...manualForm,
-                          actScore: e.target.value,
-                        })
-                      }
+                      onChange={(e) => setManualForm({ ...manualForm, actScore: e.target.value })}
                     />
                   </div>
                 </div>
@@ -398,16 +468,18 @@ const AddStudent = () => {
                 {/* School Information */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="highSchool">High School *</Label>
+                    <Label htmlFor="highSchool">
+                      High School *{" "}
+                      {counselorSchoolName && (
+                        <span className="text-xs text-muted-foreground font-normal">(Auto-filled)</span>
+                      )}
+                    </Label>
                     <Input
                       id="highSchool"
                       value={manualForm.highSchool}
-                      onChange={(e) =>
-                        setManualForm({
-                          ...manualForm,
-                          highSchool: e.target.value,
-                        })
-                      }
+                      onChange={(e) => setManualForm({ ...manualForm, highSchool: e.target.value })}
+                      readOnly={!!counselorSchoolName}
+                      className={counselorSchoolName ? "bg-muted cursor-not-allowed" : ""}
                       required
                     />
                   </div>
@@ -420,14 +492,150 @@ const AddStudent = () => {
                       max="2030"
                       value={manualForm.graduationYear}
                       onChange={(e) =>
-                        setManualForm({
-                          ...manualForm,
-                          graduationYear: e.target.value,
-                        })
+                        setManualForm({ ...manualForm, graduationYear: e.target.value })
                       }
                       required
                     />
                   </div>
+                </div>
+
+                {/* Target Universities */}
+                <div className="space-y-3 border-t pt-4">
+                  <p className="text-sm font-medium text-muted-foreground">Target Universities</p>
+
+                  {targetColleges.map((slot, index) => {
+                    const filtered = slot.search.trim()
+                      ? universityOptions.filter((u) =>
+                          u.toLowerCase().includes(slot.search.toLowerCase())
+                        )
+                      : universityOptions;
+
+                    return (
+                      <div key={index} className="space-y-3 p-3 border rounded-lg bg-muted/20">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">University {index + 1}</span>
+                          {targetColleges.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                              onClick={() => removeCollegeSlot(index)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <Label>Country</Label>
+                            <select
+                              value={slot.country}
+                              onChange={(e) =>
+                                updateCollegeSlot(index, { country: e.target.value })
+                              }
+                              className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                            >
+                              <option value="">Select country...</option>
+                              {COUNTRIES.map((c) => (
+                                <option key={c} value={c}>{c}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <Label>University</Label>
+                            <Popover
+                              open={slot.open}
+                              onOpenChange={(open) => updateCollegeSlot(index, { open })}
+                            >
+                              <PopoverTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  role="combobox"
+                                  className="w-full h-10 justify-between font-normal"
+                                >
+                                  <span className={cn(!slot.university && "text-muted-foreground")}>
+                                    {slot.university || "Select university..."}
+                                  </span>
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                <div className="flex items-center border-b px-3">
+                                  <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                                  <input
+                                    className="flex h-11 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
+                                    placeholder="Search universities..."
+                                    value={slot.search}
+                                    onChange={(e) =>
+                                      updateCollegeSlot(index, { search: e.target.value })
+                                    }
+                                  />
+                                </div>
+                                <div className="max-h-72 overflow-y-auto">
+                                  {filtered.length === 0 ? (
+                                    <p className="py-6 text-center text-sm text-muted-foreground">
+                                      No university found.
+                                    </p>
+                                  ) : (
+                                    filtered.map((u) => (
+                                      <button
+                                        key={u}
+                                        type="button"
+                                        onClick={() =>
+                                          updateCollegeSlot(index, {
+                                            university: u,
+                                            universityOther: "",
+                                            open: false,
+                                            search: "",
+                                          })
+                                        }
+                                        className="relative flex w-full cursor-pointer select-none items-center px-4 py-2.5 text-sm hover:bg-accent hover:text-accent-foreground text-left"
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4 shrink-0",
+                                            slot.university === u ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        {u}
+                                      </button>
+                                    ))
+                                  )}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        </div>
+
+                        {slot.university === "Other" && (
+                          <div>
+                            <Label>University Name</Label>
+                            <Input
+                              value={slot.universityOther}
+                              onChange={(e) =>
+                                updateCollegeSlot(index, { universityOther: e.target.value })
+                              }
+                              placeholder="Enter university name"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addCollegeSlot}
+                    className="w-full border-dashed"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add another university
+                  </Button>
                 </div>
 
                 <Button type="submit" disabled={isSubmitting} className="w-full">
@@ -458,8 +666,7 @@ const AddStudent = () => {
                   Generate Student Invite Link
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Create a registration link for students to complete their own
-                  onboarding
+                  Create a registration link for students to complete their own onboarding
                 </p>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -467,12 +674,10 @@ const AddStudent = () => {
                   <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Send className="h-8 w-8 text-primary" />
                   </div>
-                  <h3 className="text-lg font-medium mb-2">
-                    Send Student Registration Link
-                  </h3>
+                  <h3 className="text-lg font-medium mb-2">Send Student Registration Link</h3>
                   <p className="text-muted-foreground mb-6">
-                    Generate a unique link — when the student registers using
-                    it, they'll be automatically linked to your roster.
+                    Generate a unique link — when the student registers using it, they'll be
+                    automatically linked to your roster.
                   </p>
                   <Button onClick={generateInviteLink} size="lg">
                     <Link2 className="h-4 w-4 mr-2" />
@@ -483,26 +688,16 @@ const AddStudent = () => {
                 {inviteLink && (
                   <div className="space-y-4">
                     <div className="p-4 bg-muted/50 rounded-lg border">
-                      <Label className="text-sm font-medium">
-                        Registration Link
-                      </Label>
+                      <Label className="text-sm font-medium">Registration Link</Label>
                       <div className="flex items-center gap-2 mt-2">
-                        <Input
-                          value={inviteLink}
-                          readOnly
-                          className="flex-1"
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={copyInviteLink}
-                        >
+                        <Input value={inviteLink} readOnly className="flex-1" />
+                        <Button variant="outline" size="sm" onClick={copyInviteLink}>
                           <Copy className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <Button variant="outline" className="h-12">
                         <Mail className="h-4 w-4 mr-2" />
                         Send via Email
@@ -511,13 +706,12 @@ const AddStudent = () => {
                         <Phone className="h-4 w-4 mr-2" />
                         Send via SMS
                       </Button>
-                    </div>
+                    </div> */}
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* How it works */}
             <Card>
               <CardHeader>
                 <CardTitle>How Student Self-Registration Works</CardTitle>
