@@ -167,7 +167,7 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ lab: true, engine: true, generate: true });
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ lab: true, engine: true, generate: true, additional: true });
 
   const toggleSection = (key: string) =>
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
@@ -333,12 +333,37 @@ export function AppSidebar() {
                     </Collapsible>
                   ))}
                   {studentBottomItems.map(item => renderMenuItem(item))}
-                  {open && (
-                    <div className="px-2 pt-3 pb-1">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Additional Tools</p>
-                    </div>
-                  )}
-                  {additionalToolItems.map(item => renderMenuItem(item))}
+                  <Collapsible open={openSections["additional"]} onOpenChange={() => toggleSection("additional")}>
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton className="w-full">
+                          <Trophy className="h-4 w-4 shrink-0" />
+                          {open && (
+                            <>
+                              <span className="flex-1 text-left">Additional Tools</span>
+                              {openSections["additional"]
+                                ? <ChevronDown className="h-3.5 w-3.5 ml-auto" />
+                                : <ChevronRight className="h-3.5 w-3.5 ml-auto" />}
+                            </>
+                          )}
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {additionalToolItems.map(item => (
+                            <SidebarMenuSubItem key={item.title}>
+                              <SidebarMenuSubButton asChild>
+                                <NavLink to={item.url} end className={getNavCls}>
+                                  <item.icon className="h-4 w-4" />
+                                  {open && <span>{item.title}</span>}
+                                </NavLink>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
                   {renderMenuItem(feedbackItem)}
                 </SidebarMenu>
               </SidebarGroupContent>
