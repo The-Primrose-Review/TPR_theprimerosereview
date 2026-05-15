@@ -1,8 +1,9 @@
-import { useMemo } from "react";
-import { GraduationCap, Users, FileText, Calendar, BarChart3, MessageSquare, Bell, UserCircle, BookOpen, Award, Home, PartyPopper, Settings, Building2, ShieldAlert, Star, Zap, FlaskConical, Eye, ArrowLeft, Trophy, Calculator } from "lucide-react";
+import { useMemo, useState } from "react";
+import { GraduationCap, Users, FileText, Calendar, BarChart3, MessageSquare, Bell, UserCircle, BookOpen, Award, Home, PartyPopper, Settings, Building2, ShieldAlert, Star, Zap, FlaskConical, Eye, ArrowLeft, Trophy, Calculator, ChevronDown, ChevronRight, FlaskRound, Cpu, Sparkles } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
+import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton, useSidebar } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 type UserRole = 'counselor' | 'student' | 'parent' | 'principal';
 
@@ -49,30 +50,18 @@ const mainItems: NavItem[] = [{
   icon: Eye,
 }];
 
-const studentItems: NavItem[] = [{
+const studentTopItems: NavItem[] = [{
   title: "Student Dashboard",
   url: "/student-dashboard",
   icon: UserCircle,
   tourId: "tour-nav-dashboard",
-}, {
-  title: "Primrose Lab",
-  url: "/primrose-lab",
-  icon: FlaskConical,
-}, {
-  title: "My Work",
-  url: "/student-personal-area",
-  icon: BookOpen,
-  tourId: "tour-nav-my-work",
-}, {
+}];
+
+const studentBottomItems: NavItem[] = [{
   title: "Recommendation Letters",
   url: "/student-recommendation-letters",
   icon: Award,
   tourId: "tour-nav-rec",
-}, {
-  title: "My Stats",
-  url: "/student-stats",
-  icon: BarChart3,
-  tourId: "tour-nav-stats",
 }, {
   title: "Messages",
   url: "/student-messages",
@@ -83,19 +72,45 @@ const studentItems: NavItem[] = [{
   title: "Feedback",
   url: "/student-feedback",
   icon: Star,
-}, {
-  title: "Evaluation Engine",
-  url: "/evaluation-engine",
-  icon: Zap,
-}, {
-  title: "Scholarship Finder",
-  url: "/scholarship-finder",
-  icon: Trophy,
-}, {
-  title: "Tuition Calculator",
-  url: "/tuition-calculator",
-  icon: Calculator,
 }];
+
+const studentStandaloneItems = [...studentTopItems, ...studentBottomItems];
+
+const studentSections = [
+  {
+    key: "lab",
+    label: "Lab",
+    icon: FlaskRound,
+    items: [
+      { title: "Primrose Lab", url: "/primrose-lab", icon: FlaskConical },
+    ] as NavItem[],
+  },
+  {
+    key: "engine",
+    label: "Engine",
+    icon: Cpu,
+    items: [
+      { title: "Evaluation Engine", url: "/evaluation-engine", icon: Zap },
+      { title: "Scholarship Finder", url: "/scholarship-finder", icon: Trophy },
+      { title: "Tuition Calculator", url: "/tuition-calculator", icon: Calculator },
+    ] as NavItem[],
+  },
+  {
+    key: "generate",
+    label: "Generate",
+    icon: Sparkles,
+    items: [
+      { title: "My Work", url: "/student-personal-area", icon: BookOpen, tourId: "tour-nav-my-work" },
+      { title: "My Stats", url: "/student-stats", icon: BarChart3, tourId: "tour-nav-stats" },
+    ] as NavItem[],
+  },
+];
+
+// Flat list of all student items (used for preview mode)
+const studentItems: NavItem[] = [
+  ...studentStandaloneItems,
+  ...studentSections.flatMap(s => s.items),
+];
 
 const parentItems = [{
   title: "Parent Portal",
@@ -151,6 +166,10 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ lab: true, engine: true, generate: true });
+
+  const toggleSection = (key: string) =>
+    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
 
   const isPreviewMode = currentPath.startsWith('/preview/');
 
@@ -268,7 +287,46 @@ export function AppSidebar() {
               <SidebarGroupLabel>Student Portal</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {studentItems.map(item => renderMenuItem(item))}
+                  {studentTopItems.map(item => renderMenuItem(item))}
+                  {studentSections.map(section => (
+                    <Collapsible key={section.key} open={openSections[section.key]} onOpenChange={() => toggleSection(section.key)}>
+                      <SidebarMenuItem>
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton className="w-full">
+                            <section.icon className="h-4 w-4 shrink-0" />
+                            {open && (
+                              <>
+                                <span className="flex-1 text-left">{section.label}</span>
+                                {openSections[section.key]
+                                  ? <ChevronDown className="h-3.5 w-3.5 ml-auto" />
+                                  : <ChevronRight className="h-3.5 w-3.5 ml-auto" />}
+                              </>
+                            )}
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            {section.items.map(item => (
+                              <SidebarMenuSubItem key={item.title}>
+                                <SidebarMenuSubButton asChild>
+                                  <NavLink
+                                    to={item.url}
+                                    end
+                                    className={getNavCls}
+                                    id={item.tourId}
+                                  >
+                                    <item.icon className="h-4 w-4" />
+                                    {open && <span>{item.title}</span>}
+                                  </NavLink>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </SidebarMenuItem>
+                    </Collapsible>
+                  ))}
+                  {studentBottomItems.map(item => renderMenuItem(item))}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
