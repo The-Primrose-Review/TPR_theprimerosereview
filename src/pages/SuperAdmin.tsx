@@ -101,6 +101,7 @@ const SuperAdmin = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<RoleTab>("all");
+  const [schoolFilter, setSchoolFilter] = useState<string>("all");
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [adminUserId, setAdminUserId] = useState<string | null>(null);
   const [activity, setActivity] = useState<PlatformActivity | null>(null);
@@ -221,18 +222,25 @@ const SuperAdmin = () => {
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [users]);
 
+  // ── Unique school names for filter dropdown ──────────────────
+  const uniqueSchoolNames = useMemo(() => {
+    const names = new Set(users.map(u => u.school_name).filter(Boolean) as string[]);
+    return [...names].sort();
+  }, [users]);
+
   // ── Filtered users ───────────────────────────────────────────
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return users.filter(u => {
       const matchesRole = activeTab === "all" || u.role === activeTab;
+      const matchesSchool = schoolFilter === "all" || u.school_name === schoolFilter;
       const matchesSearch =
         (u.full_name ?? "").toLowerCase().includes(q) ||
         (u.email ?? "").toLowerCase().includes(q) ||
         (u.school_name ?? "").toLowerCase().includes(q);
-      return matchesRole && matchesSearch;
+      return matchesRole && matchesSchool && matchesSearch;
     });
-  }, [users, search, activeTab]);
+  }, [users, search, activeTab, schoolFilter]);
 
   const counselors = useMemo(() => users.filter(u => u.role === "counselor"), [users]);
 
@@ -648,6 +656,17 @@ const SuperAdmin = () => {
               <span className="text-sm font-normal text-gray-400">({filtered.length})</span>
             </h2>
             <div className="flex items-center gap-2">
+              <Select value={schoolFilter} onValueChange={setSchoolFilter}>
+                <SelectTrigger className="h-8 text-sm w-48">
+                  <SelectValue placeholder="All Schools" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Schools</SelectItem>
+                  {uniqueSchoolNames.map(name => (
+                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input

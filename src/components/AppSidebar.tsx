@@ -69,6 +69,10 @@ const studentBottomItems: NavItem[] = [{
   icon: MessageSquare,
   badge: 3,
   tourId: "tour-nav-messages",
+}, {
+  title: "My Profile",
+  url: "/student-profile",
+  icon: UserCircle,
 }];
 
 const additionalToolItems: NavItem[] = [
