@@ -66,6 +66,8 @@ import EvaluationEngine from "./pages/EvaluationEngine";
 import PrimroseLab from "./pages/PrimroseLab";
 import ScholarshipFinder from "./pages/ScholarshipFinder";
 import TuitionCalculator from "./pages/TuitionCalculator";
+import StudentEditProfile from "./pages/StudentEditProfile";
+import CounselorEditStudent from "./pages/CounselorEditStudent";
 
 const queryClient = new QueryClient();
 
@@ -90,6 +92,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     '/student-recommendation-letters',
     '/student-messages',
     '/evaluation-engine',
+    '/student-profile',
   ].includes(location.pathname) ||
   location.pathname === '/submit-essay' ||
   location.pathname === '/personal-essay' ||
@@ -265,6 +268,14 @@ const App = () => {
             </AppLayout>
           } />
 
+          <Route path="/counselor/edit-student/:studentId" element={
+            <AppLayout>
+              <ProtectedRoute allowedRoles={['counselor', 'admin']}>
+                <CounselorEditStudent />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+
           <Route path="/check-deadlines" element={
             <AppLayout>
               <ProtectedRoute allowedRoles={['counselor', 'admin']}>
@@ -282,6 +293,14 @@ const App = () => {
           } />
 
           {/* ── Student-only routes ── */}
+          <Route path="/student-profile" element={
+            <AppLayout>
+              <ProtectedRoute allowedRoles={['student']}>
+                <StudentEditProfile />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+
           <Route path="/student-dashboard" element={
             <AppLayout>
               <ProtectedRoute allowedRoles={['student']}>

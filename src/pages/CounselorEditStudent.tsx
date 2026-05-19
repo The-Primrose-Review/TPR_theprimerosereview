@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { backgroundStep } from "@/data/steps/background";
-import { Loader2, User, GraduationCap, Phone, BookOpen, Building2, Plus, X, ChevronsUpDown, Search, Check } from "lucide-react";
+import { Loader2, User, GraduationCap, Phone, Building2, Plus, X, ChevronsUpDown, Search, Check, ArrowLeft } from "lucide-react";
 
 const COUNTRIES = [
   "United States", "United Kingdom", "Canada", "Australia",
@@ -54,11 +55,13 @@ const emptySlot = (): CollegeSlot => ({
   search: "",
 });
 
-const StudentEditProfile = () => {
+const CounselorEditStudent = () => {
+  const { studentId } = useParams<{ studentId: string }>();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [email, setEmail] = useState("");
+  const [studentEmail, setStudentEmail] = useState("");
   const [form, setForm] = useState<ProfileForm>({
     full_name: "",
     phone: "",
@@ -74,23 +77,19 @@ const StudentEditProfile = () => {
   const [colleges, setColleges] = useState<CollegeSlot[]>([emptySlot()]);
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
+    if (studentId) fetchStudentData();
+  }, [studentId]);
 
-  const fetchProfile = async () => {
+  const fetchStudentData = async () => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not logged in");
-
-      setEmail(user.email ?? "");
-
       const [{ data: profile }, { data: studentProfile }, { data: targetColleges }] = await Promise.all([
-        supabase.from("profiles").select("full_name").eq("user_id", user.id).maybeSingle(),
-        supabase.from("student_profiles").select("phone, grade, graduation_year, gpa, sat_score, act_score, parent_name, parent_email, parent_phone").eq("user_id", user.id).maybeSingle(),
-        (supabase as any).from("student_target_colleges").select("country, college").eq("student_id", user.id),
+        supabase.from("profiles").select("full_name, email").eq("user_id", studentId).maybeSingle(),
+        supabase.from("student_profiles").select("phone, grade, graduation_year, gpa, sat_score, act_score, parent_name, parent_email, parent_phone").eq("user_id", studentId).maybeSingle(),
+        (supabase as any).from("student_target_colleges").select("country, college").eq("student_id", studentId),
       ]);
 
+      setStudentEmail(profile?.email ?? "");
       setForm({
         full_name: profile?.full_name ?? "",
         phone: studentProfile?.phone ?? "",
@@ -119,7 +118,7 @@ const StudentEditProfile = () => {
         );
       }
     } catch (err: any) {
-      toast({ title: "Failed to load profile", description: err.message, variant: "destructive" });
+      toast({ title: "Failed to load student", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -140,15 +139,13 @@ const StudentEditProfile = () => {
   };
 
   const handleSave = async () => {
+    if (!studentId) return;
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not logged in");
-
       const [profileResult, studentProfileResult] = await Promise.all([
-        supabase.from("profiles").update({ full_name: form.full_name }).eq("user_id", user.id),
+        supabase.from("profiles").update({ full_name: form.full_name }).eq("user_id", studentId),
         supabase.from("student_profiles").upsert({
-          user_id: user.id,
+          user_id: studentId,
           phone: form.phone || null,
           grade: form.grade || null,
           graduation_year: form.graduation_year ? parseInt(form.graduation_year) : null,
@@ -157,22 +154,23 @@ const StudentEditProfile = () => {
           act_score: form.act_score ? parseInt(form.act_score) : null,
           parent_name: form.parent_name || null,
           parent_phone: form.parent_phone || null,
+          parent_email: form.parent_email || null,
         }, { onConflict: "user_id" }),
       ]);
 
       if (profileResult.error) throw profileResult.error;
       if (studentProfileResult.error) throw studentProfileResult.error;
 
-      // Colleges: delete then re-insert non-empty slots
+      // Colleges: delete then re-insert
       const { error: deleteError } = await (supabase as any)
         .from("student_target_colleges")
         .delete()
-        .eq("student_id", user.id);
+        .eq("student_id", studentId);
       if (deleteError) throw deleteError;
 
       const validColleges = colleges
         .map(c => ({
-          student_id: user.id,
+          student_id: studentId,
           country: c.country || null,
           college: c.university === "Other" ? c.universityOther.trim() : c.university.trim(),
         }))
@@ -185,7 +183,7 @@ const StudentEditProfile = () => {
         if (insertError) throw insertError;
       }
 
-      toast({ title: "Profile updated", description: "Your changes have been saved." });
+      toast({ title: "Student updated", description: "Changes saved successfully." });
     } catch (err: any) {
       toast({ title: "Failed to save", description: err.message, variant: "destructive" });
     } finally {
@@ -203,9 +201,16 @@ const StudentEditProfile = () => {
 
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">My Profile</h1>
-        <p className="text-muted-foreground text-sm mt-1">Update your personal, academic, and college details.</p>
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/students")}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            Edit {form.full_name || "Student"}
+          </h1>
+          <p className="text-muted-foreground text-sm mt-0.5">{studentEmail}</p>
+        </div>
       </div>
 
       {/* Personal Info */}
@@ -222,13 +227,12 @@ const StudentEditProfile = () => {
             <Input
               value={form.full_name}
               onChange={e => handleChange("full_name", e.target.value)}
-              placeholder="Your full name"
+              placeholder="Student's full name"
             />
           </div>
           <div className="space-y-1.5">
             <Label>Email</Label>
-            <Input value={email} disabled className="bg-muted text-muted-foreground cursor-not-allowed" />
-            <p className="text-xs text-muted-foreground">Email cannot be changed here.</p>
+            <Input value={studentEmail} disabled className="bg-muted text-muted-foreground cursor-not-allowed" />
           </div>
           <div className="space-y-1.5">
             <Label>Phone</Label>
@@ -457,14 +461,12 @@ const StudentEditProfile = () => {
             </div>
             <div className="space-y-1.5">
               <Label>Parent Email</Label>
-              <Input value={form.parent_email} disabled className="bg-muted text-muted-foreground cursor-not-allowed" />
+              <Input
+                value={form.parent_email}
+                onChange={e => handleChange("parent_email", e.target.value)}
+                placeholder="parent@email.com"
+              />
             </div>
-          </div>
-          <div className="rounded-md bg-muted px-3 py-2">
-            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-              <BookOpen className="h-3.5 w-3.5 shrink-0" />
-              Parent email is managed by your counselor and cannot be changed here.
-            </p>
           </div>
         </CardContent>
       </Card>
@@ -480,4 +482,4 @@ const StudentEditProfile = () => {
   );
 };
 
-export default StudentEditProfile;
+export default CounselorEditStudent;

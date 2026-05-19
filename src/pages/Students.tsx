@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
   Filter,
@@ -32,7 +33,8 @@ import {
   LayoutGrid,
   List,
   Loader2,
-  Send
+  Send,
+  Pencil,
 } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -143,6 +145,7 @@ const Students = () => {
   const [viewMode, setViewMode] = useState<"list" | "grid">("list")
   const { toast } = useToast()
   const { criteria } = useAtRiskCriteria()
+  const navigate = useNavigate()
 
   useEffect(() => {
     fetchStudents()
@@ -768,6 +771,7 @@ const Students = () => {
                 <TableHead>Essays</TableHead>
                 <TableHead>Deadlines</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -806,6 +810,16 @@ const Students = () => {
                         <TableCell>{student.upcomingDeadlines}</TableCell>
                         <TableCell>
                           <AtRiskBadge student={student} criteria={criteria} />
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                            onClick={e => { e.stopPropagation(); navigate(`/counselor/edit-student/${student.id}`); }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     </DialogTrigger>
@@ -846,7 +860,17 @@ const Students = () => {
                             </div>
                           </div>
                         </div>
-                        <AtRiskBadge student={student} criteria={criteria} />
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground shrink-0"
+                            onClick={e => { e.stopPropagation(); navigate(`/counselor/edit-student/${student.id}`); }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <AtRiskBadge student={student} criteria={criteria} />
+                        </div>
                       </div>
 
                       <div className="mb-4">
