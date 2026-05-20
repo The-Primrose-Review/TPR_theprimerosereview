@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { GraduationCap, Users, FileText, Calendar, BarChart3, MessageSquare, Bell, UserCircle, BookOpen, Award, Home, PartyPopper, Settings, Building2, ShieldAlert, Star, Zap, FlaskConical, Eye, ArrowLeft, Trophy, Calculator, ChevronDown, ChevronRight, FlaskRound, Cpu, Sparkles, LogOut } from "lucide-react";
+import { GraduationCap, Users, FileText, Calendar, BarChart3, MessageSquare, Bell, UserCircle, Award, Home, PartyPopper, Settings, Building2, ShieldAlert, Star, Zap, FlaskConical, Eye, ArrowLeft, Trophy, Calculator, ChevronDown, ChevronRight, Sparkles, LogOut } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton, useSidebar } from "@/components/ui/sidebar";
 import { supabase } from "@/integrations/supabase/client";
@@ -75,48 +75,27 @@ const studentBottomItems: NavItem[] = [{
   icon: UserCircle,
 }];
 
+const feedbackItem: NavItem = { title: "Feedback", url: "/student-feedback", icon: Star };
+
+const studentStandaloneItems = [...studentTopItems, ...studentBottomItems, feedbackItem];
+
+const essayJourneySteps: (NavItem & { step: number })[] = [
+  { step: 1, title: "Primrose Lab", url: "/primrose-lab", icon: FlaskConical },
+  { step: 2, title: "Evaluation Engine", url: "/evaluation-engine", icon: Zap },
+  { step: 3, title: "Submit Essay", url: "/student-personal-area", icon: Sparkles, tourId: "tour-nav-my-work" },
+];
+
 const additionalToolItems: NavItem[] = [
   { title: "Weekly Challenge", url: "/weekly-challenge", icon: Trophy },
   { title: "Scholarship Finder", url: "/scholarship-finder", icon: Star },
   { title: "Tuition Calculator", url: "/tuition-calculator", icon: Calculator },
-];
-
-const feedbackItem: NavItem = { title: "Feedback", url: "/student-feedback", icon: Star };
-
-const studentStandaloneItems = [...studentTopItems, ...studentBottomItems, ...additionalToolItems, feedbackItem];
-
-const studentSections = [
-  {
-    key: "lab",
-    label: "Stress-test your idea",
-    icon: FlaskRound,
-    items: [
-      { title: "Primrose Lab", url: "/primrose-lab", icon: FlaskConical },
-    ] as NavItem[],
-  },
-  {
-    key: "engine",
-    label: "Evaluate your full essay",
-    icon: Cpu,
-    items: [
-      { title: "Evaluation Engine", url: "/evaluation-engine", icon: Zap },
-    ] as NavItem[],
-  },
-  {
-    key: "generate",
-    label: "Generate and Submit your essay",
-    icon: Sparkles,
-    items: [
-      { title: "My Work", url: "/student-personal-area", icon: BookOpen, tourId: "tour-nav-my-work" },
-      { title: "My Stats", url: "/student-stats", icon: BarChart3, tourId: "tour-nav-stats" },
-    ] as NavItem[],
-  },
+  { title: "My Stats", url: "/student-stats", icon: BarChart3, tourId: "tour-nav-stats" },
 ];
 
 // Flat list of all student items (used for preview mode)
 const studentItems: NavItem[] = [
   ...studentStandaloneItems,
-  ...studentSections.flatMap(s => s.items),
+  ...essayJourneySteps,
 ];
 
 const parentItems = [{
@@ -184,7 +163,7 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ lab: true, engine: true, generate: true, additional: true });
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ additional: false });
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -317,43 +296,21 @@ export function AppSidebar() {
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Essay Journey</p>
                     </div>
                   )}
-                  {studentSections.map(section => (
-                    <Collapsible key={section.key} open={openSections[section.key]} onOpenChange={() => toggleSection(section.key)}>
-                      <SidebarMenuItem>
-                        <CollapsibleTrigger asChild>
-                          <SidebarMenuButton className="w-full">
-                            <section.icon className="h-4 w-4 shrink-0" />
-                            {open && (
-                              <>
-                                <span className="flex-1 text-left">{section.label}</span>
-                                {openSections[section.key]
-                                  ? <ChevronDown className="h-3.5 w-3.5 ml-auto" />
-                                  : <ChevronRight className="h-3.5 w-3.5 ml-auto" />}
-                              </>
-                            )}
-                          </SidebarMenuButton>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <SidebarMenuSub>
-                            {section.items.map(item => (
-                              <SidebarMenuSubItem key={item.title}>
-                                <SidebarMenuSubButton asChild>
-                                  <NavLink
-                                    to={item.url}
-                                    end
-                                    className={getNavCls}
-                                    id={item.tourId}
-                                  >
-                                    <item.icon className="h-4 w-4" />
-                                    {open && <span>{item.title}</span>}
-                                  </NavLink>
-                                </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
-                            ))}
-                          </SidebarMenuSub>
-                        </CollapsibleContent>
-                      </SidebarMenuItem>
-                    </Collapsible>
+                  {essayJourneySteps.map(step => (
+                    <SidebarMenuItem key={step.title}>
+                      <SidebarMenuButton asChild>
+                        <NavLink to={step.url} end className={getNavCls} id={step.tourId}>
+                          {open ? (
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-muted-foreground">
+                              {step.step}
+                            </span>
+                          ) : (
+                            <step.icon className="h-4 w-4" />
+                          )}
+                          {open && <span>{step.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
                   ))}
                   {studentBottomItems.map(item => renderMenuItem(item))}
                   <Collapsible open={openSections["additional"]} onOpenChange={() => toggleSection("additional")}>
