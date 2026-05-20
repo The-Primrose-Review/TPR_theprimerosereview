@@ -102,7 +102,7 @@ const Landing = () => {
             <span className="text-sm text-muted-foreground">Don't have an account? </span>
             <button
               className="text-sm text-primary font-medium hover:underline"
-              onClick={() => navigate('/signup')}
+              onClick={() => navigate('/auth')}
             >
               Sign up here
             </button>
