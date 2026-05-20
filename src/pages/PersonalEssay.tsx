@@ -21,6 +21,9 @@ import {
   MessageSquare,
   X,
   ScanText,
+  Send,
+  Users,
+  GraduationCap,
 } from "lucide-react";
 
 const SUPABASE_URL = "https://fkvfngdwblbalrompzdj.supabase.co";
@@ -58,12 +61,42 @@ const PersonalEssay = () => {
   const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
   const [isAnalysisMode, setIsAnalysisMode] = useState(false);
 
+  const [recipient, setRecipient] = useState<'counselor' | 'teacher' | 'both'>('counselor');
+  const [teachers, setTeachers] = useState<{ user_id: string; full_name: string }[]>([]);
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
+
   useEffect(() => {
-    const fetchCounselor = async () => {
+    const fetchCounselorAndTeachers = async () => {
       const { data: anyRole } = await supabase.rpc("get_any_counselor_id");
       if (anyRole) setCounselorId(anyRole);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const schoolId = profileData?.school_id;
+      if (schoolId) {
+        const { data: teacherRows } = await (supabase as any)
+          .from("teacher_profiles")
+          .select("user_id")
+          .eq("school_id", schoolId);
+
+        if (teacherRows && teacherRows.length > 0) {
+          const teacherIds = teacherRows.map((t: any) => t.user_id);
+          const { data: teacherProfilesData } = await supabase
+            .from("profiles")
+            .select("user_id, full_name")
+            .in("user_id", teacherIds);
+          if (teacherProfilesData) setTeachers(teacherProfilesData as any);
+        }
+      }
     };
-    fetchCounselor();
+    fetchCounselorAndTeachers();
 
     const cached = sessionStorage.getItem("pe_initial_suggestions");
     if (cached) {
@@ -219,12 +252,21 @@ const PersonalEssay = () => {
     if (!title.trim())   { toast.error("Please add an essay title");         return; }
     if (!content.trim()) { toast.error("Please add your essay content");     return; }
     if (isOverLimit)     { toast.error("Your essay exceeds the word limit"); return; }
-    if (!counselorId)    { toast.error("No counselor found. Please contact support."); return; }
+    if ((recipient === 'counselor' || recipient === 'both') && !counselorId) {
+      toast.error("No counselor found. Please contact support.");
+      return;
+    }
+    if ((recipient === 'teacher' || recipient === 'both') && !selectedTeacherId) {
+      toast.error("Please select a teacher to send to.");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
+
+      let essayId: string | null = currentDraftId;
 
       if (currentDraftId) {
         const { error } = await (supabase
@@ -238,21 +280,61 @@ const PersonalEssay = () => {
           .eq("id", currentDraftId) as any);
         if (error) throw error;
       } else {
-        const { error } = await supabase
+        const { data: essayData, error } = await supabase
           .from("essay_feedback")
           .insert({
             student_id:    user.id,
-            counselor_id:  counselorId,
+            counselor_id:  recipient === 'teacher' ? null : counselorId,
             essay_title:   title.trim(),
             essay_prompt:  prompt.trim() || null,
             essay_content: content.trim(),
             status:        "pending",
-          });
+          })
+          .select()
+          .single();
         if (error) throw error;
+        essayId = essayData?.id ?? null;
+      }
+
+      if ((recipient === 'teacher' || recipient === 'both') && selectedTeacherId && essayId) {
+        const { error: shareError } = await (supabase as any)
+          .from("essay_teacher_shares")
+          .insert({
+            essay_feedback_id: essayId,
+            teacher_id:        selectedTeacherId,
+            student_id:        user.id,
+          });
+        if (shareError) console.error("Failed to share with teacher:", shareError);
       }
 
       setIsSuccess(true);
       toast.success("Essay submitted successfully!");
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if ((recipient === 'counselor' || recipient === 'both') && counselorId) {
+          const [{ data: studentProfile }, { data: counselorProfile }] = await Promise.all([
+            supabase.from("profiles").select("full_name, email").eq("user_id", user.id).maybeSingle(),
+            supabase.from("profiles").select("full_name, email").eq("user_id", counselorId).maybeSingle(),
+          ]);
+          await fetch(`${SUPABASE_URL}/functions/v1/send-new-essay-notification`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session?.access_token}`,
+            },
+            body: JSON.stringify({
+              counselorEmail:  counselorProfile?.email || "no-email@unknown.com",
+              counselorName:   counselorProfile?.full_name || "Counselor",
+              studentName:     studentProfile?.full_name || "Your student",
+              essayLabel:      title.trim(),
+              appUrl:          window.location.origin,
+            }),
+          });
+        }
+      } catch (notifyError) {
+        console.error("Failed to send essay notification:", notifyError);
+      }
     } catch (error: any) {
       toast.error(error.message || "Failed to submit essay");
     } finally {
@@ -276,7 +358,11 @@ const PersonalEssay = () => {
           <div>
             <h2 className="text-2xl font-bold text-foreground">Essay Submitted!</h2>
             <p className="text-muted-foreground mt-2">
-              Your counselor has received your personal essay and will review it soon.
+              {recipient === 'teacher'
+                ? "Your teacher has received your personal essay and will review it soon."
+                : recipient === 'both'
+                ? "Your counselor and teacher have both received your personal essay."
+                : "Your counselor has received your personal essay and will review it soon."}
             </p>
           </div>
           <Button onClick={() => navigate("/student-personal-area?tab=essays")} className="w-full">
@@ -501,6 +587,68 @@ const PersonalEssay = () => {
                         <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">
                           {selectionFeedback}
                         </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Recipient */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Send className="h-5 w-5 text-primary" />
+                  Send To
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex gap-2">
+                  {([
+                    { value: 'counselor', label: 'My Counselor', icon: GraduationCap },
+                    { value: 'teacher',   label: 'A Teacher',    icon: Users },
+                    { value: 'both',      label: 'Both',         icon: Send },
+                  ] as const).map(({ value, label, icon: Icon }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setRecipient(value)}
+                      className={`flex-1 flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border text-sm font-medium transition-all ${
+                        recipient === value
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-border bg-muted/30 hover:bg-muted/60 text-foreground"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {(recipient === 'teacher' || recipient === 'both') && (
+                  <div className="space-y-2 pt-1">
+                    <p className="text-xs text-muted-foreground font-medium">Select teacher</p>
+                    {teachers.length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic">
+                        No teachers found at your school. Ask your counselor to add one.
+                      </p>
+                    ) : (
+                      <div className="flex flex-col gap-1.5">
+                        {teachers.map((t) => (
+                          <button
+                            key={t.user_id}
+                            type="button"
+                            onClick={() => setSelectedTeacherId(t.user_id)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm text-left transition-all ${
+                              selectedTeacherId === t.user_id
+                                ? "border-primary bg-primary/5 text-primary"
+                                : "border-border hover:bg-muted/50"
+                            }`}
+                          >
+                            <Users className="h-3.5 w-3.5 shrink-0" />
+                            {t.full_name}
+                          </button>
+                        ))}
                       </div>
                     )}
                   </div>

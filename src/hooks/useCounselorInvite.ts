@@ -12,7 +12,9 @@ export const useCounselorInvite = () => {
         .from("counselor_invites")
         .select("invite_code")
         .eq("counselor_id", user.id)
-        .maybeSingle(); // ✅ changed
+        .eq("invite_role", "student")
+        .limit(1)
+        .maybeSingle();
 
       if (error) throw error;
 

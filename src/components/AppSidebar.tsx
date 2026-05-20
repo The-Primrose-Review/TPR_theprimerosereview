@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-type UserRole = 'counselor' | 'student' | 'parent' | 'principal';
+type UserRole = 'counselor' | 'student' | 'parent' | 'principal' | 'teacher';
 
 interface NavItem {
   title: string;
@@ -133,6 +133,16 @@ const parentItems = [{
   icon: MessageSquare
 }];
 
+const teacherItems = [{
+  title: "Dashboard",
+  url: "/teacher-dashboard",
+  icon: BarChart3
+}, {
+  title: "Essays",
+  url: "/teacher-essays",
+  icon: FileText
+}];
+
 const principalItems = [{
   title: "Overview",
   url: "/principal-dashboard",
@@ -164,9 +174,10 @@ const principalItems = [{
 }];
 
 // Routes that belong to each role
-const studentRoutes = ['/student-dashboard', '/primrose-lab', '/scholarship-finder', '/tuition-calculator', '/student-personal-area', '/student-recommendation-letters', '/student-stats', '/submit-essay', '/add-application', '/student-messages', '/personal-essay', '/student-feedback', '/evaluation-engine', '/weekly-challenge'];
+const studentRoutes = ['/student-dashboard', '/primrose-lab', '/scholarship-finder', '/tuition-calculator', '/student-personal-area', '/student-recommendation-letters', '/student-stats', '/submit-essay', '/add-application', '/student-messages', '/personal-essay', '/student-feedback', '/evaluation-engine', '/weekly-challenge', '/student-profile'];
 const parentRoutes = ['/parent-portal', '/school-activities', '/parent-messages'];
 const principalRoutes = ['/principal-dashboard', '/principal-students', '/principal-counselors', '/principal-activities', '/principal-at-risk-criteria', '/principal-settings'];
+const teacherRoutes = ['/teacher-dashboard', '/teacher-essays'];
 
 export function AppSidebar() {
   const { open } = useSidebar();
@@ -196,6 +207,7 @@ export function AppSidebar() {
     if (studentRoutes.some(route => currentPath.startsWith(route))) return 'student';
     if (parentRoutes.some(route => currentPath.startsWith(route))) return 'parent';
     if (principalRoutes.some(route => currentPath.startsWith(route))) return 'principal';
+    if (teacherRoutes.some(route => currentPath.startsWith(route))) return 'teacher';
     return 'counselor';
   }, [currentPath, isPreviewMode]);
 
@@ -398,6 +410,17 @@ export function AppSidebar() {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {principalItems.map(item => renderMenuItem(item))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
+
+          {!isPreviewMode && currentRole === 'teacher' && (
+            <SidebarGroup>
+              <SidebarGroupLabel>Teacher Portal</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {teacherItems.map(item => renderMenuItem(item))}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

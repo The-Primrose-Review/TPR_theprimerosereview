@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { backgroundStep } from "@/data/steps/background";
-import { ArrowLeft, GraduationCap, Users, UserCircle, Building2, Check, ChevronsUpDown, Search, Plus, X } from "lucide-react";
+import { ArrowLeft, GraduationCap, Users, UserCircle, Building2, Check, ChevronsUpDown, Search, Plus, X, BookOpen } from "lucide-react";
 import primroseLogo from "@/assets/primrose-logo.png";
 
 const COUNTRIES = [
@@ -41,7 +41,7 @@ const Signup = () => {
   const inviteCodeParam = searchParams.get('invite');
   const roleParam = searchParams.get('role');
 
-  const [selectedRole, setSelectedRole] = useState<'counselor' | 'student' | 'parent' | 'principal' | null>(null);
+  const [selectedRole, setSelectedRole] = useState<'counselor' | 'student' | 'parent' | 'principal' | 'teacher' | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   // Common fields
@@ -80,6 +80,9 @@ const Signup = () => {
   const removeCollegeSlot = (index: number) =>
     setTargetColleges((prev) => prev.filter((_, i) => i !== index));
 
+  // Teacher fields
+  const [teacherSubject, setTeacherSubject] = useState("");
+
   // Parent fields
   const [invitationCode, setInvitationCode] = useState("");
 
@@ -89,6 +92,14 @@ useEffect(() => {
   if (roleParam === 'parent') {
     setSelectedRole('parent');
     if (inviteCodeParam) setInvitationCode(inviteCodeParam);
+  } else if (roleParam === 'teacher' && inviteCodeParam) {
+    setSelectedRole('teacher');
+    (async () => {
+      const { data: schoolName } = await supabase.rpc('get_school_name_by_invite', {
+        invite_code_param: inviteCodeParam,
+      });
+      if (schoolName) setInviteSchoolName(schoolName);
+    })();
   } else if (inviteCodeParam) {
     setSelectedRole('student');
     (async () => {
@@ -106,6 +117,7 @@ useEffect(() => {
       case 'student': return <Users className={size} />;
       case 'parent': return <UserCircle className={size} />;
       case 'principal': return <Building2 className={size} />;
+      case 'teacher': return <BookOpen className={size} />;
       default: return null;
     }
   };
@@ -116,6 +128,7 @@ useEffect(() => {
       case 'student': return 'Student';
       case 'parent': return 'Parent';
       case 'principal': return 'Admin';
+      case 'teacher': return 'Teacher';
       default: return '';
     }
   };
@@ -126,6 +139,7 @@ useEffect(() => {
       case 'student': navigate('/student-dashboard'); break;
       case 'parent': navigate('/parent-portal'); break;
       case 'principal': navigate('/principal-dashboard'); break;
+      case 'teacher': navigate('/teacher-dashboard'); break;
       default: navigate('/');
     }
   };
@@ -234,12 +248,32 @@ useEffect(() => {
           }
         }
 
+        // Teacher: inherit school_id from the counselor whose invite was used
+        if (selectedRole === 'teacher' && inviteCodeParam) {
+          const { data: inviteData } = await (supabase as any)
+            .from('counselor_invites')
+            .select('counselor_id')
+            .eq('invite_code', inviteCodeParam)
+            .maybeSingle();
+
+          if (inviteData) {
+            const { data: counselorProfile } = await supabase
+              .from('profiles')
+              .select('school_id')
+              .eq('user_id', inviteData.counselor_id)
+              .maybeSingle();
+            if (counselorProfile?.school_id) {
+              schoolId = counselorProfile.school_id;
+            }
+          }
+        }
+
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({ user_id: data.user.id, email, full_name: fullName, school_id: schoolId });
         if (profileError) throw profileError;
 
-        const { error: roleError } = await supabase
+        const { error: roleError } = await (supabase as any)
           .from('user_roles')
           .insert({ user_id: data.user.id, role: selectedRole });
         if (roleError) throw roleError;
@@ -333,6 +367,18 @@ useEffect(() => {
                 : null,
             });
           if (counselorError) throw counselorError;
+        }
+
+        // Teacher-specific: insert teacher_profiles (school_id already set above via invite)
+        if (selectedRole === 'teacher') {
+          const { error: teacherProfileError } = await (supabase as any)
+            .from('teacher_profiles')
+            .insert({
+              user_id: data.user.id,
+              school_id: schoolId,
+              subject: teacherSubject.trim() || null,
+            });
+          if (teacherProfileError) throw teacherProfileError;
         }
 
         // Parent-specific: link to student via counselor invite code
@@ -778,6 +824,29 @@ useEffect(() => {
                     <p className="text-xs text-muted-foreground">
                       If the school already exists, you'll be linked to it automatically.
                     </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Teacher-specific fields */}
+              {selectedRole === 'teacher' && (
+                <div className="space-y-4 pt-2 border-t border-border">
+                  <p className="text-sm font-medium text-muted-foreground">School Information</p>
+                  {inviteSchoolName && (
+                    <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-muted text-sm text-muted-foreground">
+                      <span className="flex-1">{inviteSchoolName}</span>
+                      <span className="text-xs text-primary font-medium">Auto-filled</span>
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="teacherSubject">Subject / Department <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                    <Input
+                      id="teacherSubject"
+                      type="text"
+                      value={teacherSubject}
+                      onChange={(e) => setTeacherSubject(e.target.value)}
+                      placeholder="e.g. English, History, Science..."
+                    />
                   </div>
                 </div>
               )}

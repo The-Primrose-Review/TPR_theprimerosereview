@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { backgroundStep } from "@/data/steps/background";
+import { useTeacherInvite, useGenerateTeacherInvite } from "@/hooks/useTeacherInvite";
+import { BookOpen } from "lucide-react";
 import {
   Upload,
   Copy,
@@ -58,6 +60,10 @@ const AddStudent = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
   const [counselorSchoolName, setCounselorSchoolName] = useState("");
+
+  const { data: existingTeacherInvite } = useTeacherInvite();
+  const generateTeacherInvite = useGenerateTeacherInvite();
+  const [teacherInviteLink, setTeacherInviteLink] = useState(existingTeacherInvite ?? "");
   const { toast } = useToast();
 
   const [manualForm, setManualForm] = useState({
@@ -707,6 +713,64 @@ const AddStudent = () => {
                         Send via SMS
                       </Button>
                     </div> */}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-violet-200 dark:border-violet-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-violet-600" />
+                  Generate Teacher Invite Link
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Share this link with teachers at your school so they can register and receive student essays.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!teacherInviteLink && !existingTeacherInvite ? (
+                  <div className="text-center py-4">
+                    <Button
+                      onClick={async () => {
+                        try {
+                          const link = await generateTeacherInvite.mutateAsync();
+                          setTeacherInviteLink(link);
+                          toast({ title: "Teacher invite link generated!", description: "Share it with your teachers." });
+                        } catch (e: any) {
+                          toast({ title: "Failed", description: e.message, variant: "destructive" });
+                        }
+                      }}
+                      disabled={generateTeacherInvite.isPending}
+                      className="bg-violet-600 hover:bg-violet-700 text-white"
+                    >
+                      <BookOpen className="h-4 w-4 mr-2" />
+                      {generateTeacherInvite.isPending ? "Generating…" : "Generate Teacher Invite Link"}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-violet-50 dark:bg-violet-950/20 rounded-lg border border-violet-200 dark:border-violet-800">
+                    <Label className="text-sm font-medium text-violet-700 dark:text-violet-300">Teacher Registration Link</Label>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Input
+                        value={teacherInviteLink || existingTeacherInvite || ""}
+                        readOnly
+                        className="flex-1 text-xs"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(teacherInviteLink || existingTeacherInvite || "");
+                          toast({ title: "Copied!", description: "Teacher invite link copied to clipboard." });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Teachers who register with this link will be connected to your school automatically.
+                    </p>
                   </div>
                 )}
               </CardContent>

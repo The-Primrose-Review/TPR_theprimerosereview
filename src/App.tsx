@@ -69,6 +69,8 @@ import TuitionCalculator from "./pages/TuitionCalculator";
 import StudentEditProfile from "./pages/StudentEditProfile";
 import CounselorEditStudent from "./pages/CounselorEditStudent";
 import WeeklyChallenge from "./pages/WeeklyChallenge";
+import TeacherDashboard from "./pages/TeacherDashboard";
+import TeacherEssays from "./pages/TeacherEssays";
 
 const queryClient = new QueryClient();
 
@@ -494,6 +496,23 @@ const App = () => {
             <AppLayout>
               <ProtectedRoute allowedRoles={['principal']}>
                 <PrincipalSettings />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+
+          {/* ── Teacher-only routes ── */}
+          <Route path="/teacher-dashboard" element={
+            <AppLayout>
+              <ProtectedRoute allowedRoles={['teacher']}>
+                <TeacherDashboard />
+              </ProtectedRoute>
+            </AppLayout>
+          } />
+
+          <Route path="/teacher-essays" element={
+            <AppLayout>
+              <ProtectedRoute allowedRoles={['teacher']}>
+                <TeacherEssays />
               </ProtectedRoute>
             </AppLayout>
           } />
