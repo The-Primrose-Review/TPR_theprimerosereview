@@ -24,43 +24,24 @@ const LiveMicrophone: React.FC<LiveMicrophoneProps> = ({
   };
 
   return (
-    <div className={`relative flex items-center justify-center ${isActive ? "mic-active" : ""} ${className}`}>
+    <div className={`relative flex items-center justify-center ${className}`}>
       <div
-        className={`${sizes[size].container} rounded-full ${isActive ? 'bg-violet-200 micro-pulse' : 'bg-violet-100'} flex items-center justify-center transition-all duration-300 border-2 border-violet-300 overflow-hidden shadow-md`}
+        className={`${sizes[size].container} rounded-full flex items-center justify-center transition-all duration-300 border-2 overflow-hidden shadow-sm ${
+          isActive ? "bg-blue-50 border-blue-200" : "bg-slate-100 border-slate-200"
+        }`}
       >
         {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={altText}
-            className={`${sizes[size].image} object-cover ${isActive ? 'interviewer-speaking' : ''}`}
-          />
+          <img src={imageUrl} alt={altText} className={`${sizes[size].image} object-cover`} />
         ) : (
-          <Mic
-            className={`${sizes[size].icon} ${isActive ? 'text-violet-600 animate-pulse' : 'text-violet-500'} transition-all duration-300`}
-          />
+          <Mic className={`${sizes[size].icon} transition-all duration-300 ${isActive ? "text-blue-500 animate-pulse" : "text-slate-400"}`} />
         )}
       </div>
 
       {isActive && (
         <>
-          <div className="absolute inset-0 rounded-full bg-violet-100 animate-ping opacity-25"></div>
-          <div className="absolute inset-0 rounded-full border-2 border-violet-300 animate-pulse"></div>
-          <div className="absolute inset-0 rounded-full border border-violet-200 scale-110 animate-pulse delay-100"></div>
-          <div className="absolute inset-0 rounded-full border border-violet-100 scale-125 animate-pulse delay-200"></div>
-          <div className="absolute inset-0 rounded-full border border-violet-50 scale-140 animate-pulse delay-300"></div>
+          <div className="absolute inset-0 rounded-full bg-blue-400/10 animate-ping opacity-50" />
+          <div className="absolute inset-0 rounded-full border border-blue-300/50 animate-pulse" />
         </>
-      )}
-
-      {isActive && (
-        <div className="absolute -bottom-6 flex items-end justify-center w-full h-4 space-x-0.5">
-          <div className="w-0.5 h-1 bg-violet-500 animate-sound-wave-1"></div>
-          <div className="w-0.5 h-2 bg-violet-500 animate-sound-wave-2"></div>
-          <div className="w-0.5 h-3 bg-violet-500 animate-sound-wave-3"></div>
-          <div className="w-0.5 h-4 bg-violet-500 animate-sound-wave-4"></div>
-          <div className="w-0.5 h-3 bg-violet-500 animate-sound-wave-5"></div>
-          <div className="w-0.5 h-2 bg-violet-500 animate-sound-wave-2"></div>
-          <div className="w-0.5 h-1 bg-violet-500 animate-sound-wave-1"></div>
-        </div>
       )}
     </div>
   );

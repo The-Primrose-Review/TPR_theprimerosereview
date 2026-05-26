@@ -34,7 +34,7 @@ const InterviewContainer: React.FC<InterviewContainerProps> = ({
   };
 
   return (
-    <div className="max-w-5xl mx-auto backdrop-blur-lg bg-white/90 p-6 md:p-8 rounded-2xl shadow-xl border border-violet-200 transition-all duration-700 opacity-100 scale-100">
+    <div className="max-w-5xl mx-auto bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 transition-all duration-700 opacity-100 scale-100">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-[650px]">
         <EvaInterviewerSide
           isEvaSpeaking={isEvaSpeaking}
@@ -52,7 +52,7 @@ const InterviewContainer: React.FC<InterviewContainerProps> = ({
 
       <div className="mt-6 flex items-center justify-center gap-3">
         <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-amber-400'} ${isEvaSpeaking || isStudentSpeaking ? 'animate-pulse' : ''}`} />
-        <p className="text-sm text-violet-700 text-center">
+        <p className="text-sm text-slate-500 text-center">
           {getStatusMessage()}
         </p>
       </div>

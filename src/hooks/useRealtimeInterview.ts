@@ -89,7 +89,8 @@ export const useRealtimeInterview = (): UseRealtimeInterviewReturn => {
         break;
 
       case "response.output_audio_transcript.done":
-        setIsEvaSpeaking(false);
+        // Don't set isEvaSpeaking false here — text generation finishes before audio playback does.
+        // Let response.done handle it so the orb stays active while audio is still playing.
         if (event.transcript) {
           setLastEvaUtterance(event.transcript);
           setEvaTranscript("");
@@ -158,7 +159,6 @@ export const useRealtimeInterview = (): UseRealtimeInterviewReturn => {
       // Step 3: Create RTCPeerConnection
       const pc = new RTCPeerConnection();
       pcRef.current = pc;
-
       // Step 4: Set up audio output element for Eva's voice
       const audioEl = document.createElement("audio");
       audioEl.autoplay = true;

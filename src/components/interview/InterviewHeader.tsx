@@ -9,11 +9,11 @@ interface InterviewHeaderProps {
 
 const InterviewHeader: React.FC<InterviewHeaderProps> = ({ status, university }) => {
   return (
-    <h1 className="text-3xl font-bold mb-8 text-white flex items-center drop-shadow">
-      <GraduationCap className="mr-2 h-8 w-8" />
+    <h1 className="text-3xl font-bold mb-8 text-slate-800 flex items-center">
+      <GraduationCap className="mr-2 h-8 w-8 text-primary" />
       {university ? `${university} Interview Simulator` : "Interview Simulator"}
       {status === "active" && (
-        <span className="ml-3 text-sm px-3 py-1 rounded-full bg-violet-100 text-violet-700 animate-pulse">
+        <span className="ml-3 text-sm px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary animate-pulse">
           Live Session
         </span>
       )}

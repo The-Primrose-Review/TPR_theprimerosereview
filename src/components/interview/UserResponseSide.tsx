@@ -1,10 +1,9 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Camera, CameraOff } from "lucide-react";
+import { Camera, CameraOff, Mic } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import LiveMicrophone from "./LiveMicrophone";
 
 interface UserResponseSideProps {
   isStudentSpeaking: boolean;
@@ -72,34 +71,31 @@ const UserResponseSide: React.FC<UserResponseSideProps> = ({
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-4">
-        <Label className="text-lg font-semibold text-violet-900">Your Response</Label>
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${isStudentSpeaking ? "bg-blue-500 animate-pulse" : "bg-slate-300"}`} />
+          <span className="text-base font-semibold text-slate-700">Your Response</span>
+        </div>
         <Button
           variant="outline"
           size="sm"
           onClick={toggleCamera}
-          className="flex items-center gap-1 h-8 px-2 border-violet-200 hover:bg-violet-50"
+          className="flex items-center gap-1 h-8 px-2 border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-50"
           title={cameraOn ? "Turn off camera" : "Turn on camera"}
         >
           {cameraOn ? (
-            <>
-              <CameraOff className="h-4 w-4 text-violet-700" />
-              <span className="text-xs text-violet-700">Hide</span>
-            </>
+            <><CameraOff className="h-4 w-4" /><span className="text-xs">Hide</span></>
           ) : (
-            <>
-              <Camera className="h-4 w-4 text-violet-700" />
-              <span className="text-xs text-violet-700">Show me</span>
-            </>
+            <><Camera className="h-4 w-4" /><span className="text-xs">Show me</span></>
           )}
         </Button>
       </div>
 
       <div className="flex-1 relative">
         <div
-          className={`h-full rounded-2xl transition-all duration-300 flex flex-col ${
+          className={`h-full rounded-2xl transition-all duration-300 flex flex-col border ${
             isStudentSpeaking
-              ? 'border-2 border-violet-500 bg-white shadow-md pulse-border-violet'
-              : 'border-2 border-violet-200 bg-violet-50'
+              ? "border-blue-300 bg-blue-50/30 shadow-sm shadow-blue-100"
+              : "border-slate-200 bg-white"
           }`}
         >
           <div className="flex-1 flex items-center justify-center relative overflow-hidden rounded-t-2xl">
@@ -108,75 +104,82 @@ const UserResponseSide: React.FC<UserResponseSideProps> = ({
               autoPlay
               playsInline
               muted
-              className={`w-full h-full object-cover transform scale-x-[-1] absolute inset-0 ${isVideoLoaded && cameraOn ? 'opacity-100' : 'opacity-0'}`}
+              className={`w-full h-full object-cover transform scale-x-[-1] absolute inset-0 ${isVideoLoaded && cameraOn ? "opacity-100" : "opacity-0"}`}
             />
 
             {!cameraOn && !isStudentSpeaking && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-violet-50">
-                <div className="w-16 h-16 rounded-full bg-violet-100 flex items-center justify-center mb-3">
-                  <Camera className="h-7 w-7 text-violet-400" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
+                <div className="w-14 h-14 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center mb-3">
+                  <Camera className="h-6 w-6 text-slate-400" />
                 </div>
-                <span className="text-violet-500 text-sm">Camera off — click above to enable</span>
+                <span className="text-slate-400 text-xs">Camera off — click above to enable</span>
               </div>
             )}
 
             {!cameraOn && isStudentSpeaking && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-violet-50">
-                <LiveMicrophone isActive={true} size="lg" />
-                <span className="text-violet-700 font-medium text-base mt-8">Listening...</span>
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-blue-50/40">
+                <AnimatePresence>
+                  <motion.div
+                    className="relative flex items-center justify-center"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                  >
+                    <motion.div
+                      animate={{ scale: [1, 1.5, 1], opacity: [0.25, 0, 0.25] }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                      className="absolute w-16 h-16 rounded-full bg-blue-400/20"
+                    />
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center relative z-10 shadow-lg shadow-blue-200">
+                      <Mic className="w-5 h-5 text-white" />
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+                <span className="text-blue-600 font-medium text-sm mt-8">Listening...</span>
               </div>
             )}
 
             {cameraOn && !isVideoLoaded && !cameraError && (
-              <div className="absolute inset-0 flex items-center justify-center bg-violet-50">
-                <div className="w-10 h-10 border-2 border-violet-700 border-t-transparent rounded-full animate-spin"></div>
+              <div className="absolute inset-0 flex items-center justify-center bg-slate-50">
+                <div className="w-8 h-8 border-2 border-slate-300 border-t-primary rounded-full animate-spin" />
               </div>
             )}
 
             {cameraError && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-violet-50 bg-opacity-80 text-violet-800 p-4 text-center">
-                <span className="font-medium">Camera error</span>
-                <span className="text-xs mt-1">{cameraError}</span>
-                <Button
-                  size="sm"
-                  className="mt-3 bg-violet-700 hover:bg-violet-800 text-white"
-                  onClick={toggleCamera}
-                >
-                  Try Again
-                </Button>
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 p-4 text-center">
+                <span className="text-slate-700 font-medium text-sm">Camera error</span>
+                <span className="text-slate-400 text-xs mt-1">{cameraError}</span>
+                <Button size="sm" className="mt-3" onClick={toggleCamera}>Try Again</Button>
               </div>
             )}
 
             {isStudentSpeaking && cameraOn && (
-              <div className="absolute top-4 right-4 flex items-center space-x-2 bg-violet-800 bg-opacity-80 text-white px-3 py-1 rounded-full">
-                <div className="relative w-3 h-3">
-                  <div className="absolute inset-0 bg-violet-200 rounded-full animate-ping"></div>
-                  <div className="absolute inset-0 bg-violet-200 rounded-full"></div>
+              <div className="absolute top-3 right-3 flex items-center gap-2 bg-blue-500/90 backdrop-blur-sm text-white px-3 py-1 rounded-full">
+                <div className="relative w-2 h-2">
+                  <div className="absolute inset-0 bg-white rounded-full animate-ping" />
+                  <div className="absolute inset-0 bg-white rounded-full" />
                 </div>
-                <span className="text-sm font-medium">Listening...</span>
+                <span className="text-xs font-medium">Listening</span>
               </div>
             )}
           </div>
 
-          {/* Live transcript */}
           {studentTranscript && (
-            <div className="px-4 py-2 bg-white border-t border-violet-100">
-              <p className="text-sm text-violet-700 italic truncate">"{studentTranscript}"</p>
+            <div className="px-4 py-2 border-t border-slate-100 bg-slate-50">
+              <p className="text-xs text-blue-600 italic truncate">"{studentTranscript}"</p>
             </div>
           )}
 
-          <div className="flex justify-between p-4 bg-white border-t border-violet-200 rounded-b-2xl">
+          <div className="flex justify-between p-4 border-t border-slate-100 bg-white rounded-b-2xl">
             <Button
               variant="outline"
               onClick={endInterview}
-              className="border-violet-200 text-violet-900 hover:bg-violet-50 transition-all duration-300"
+              className="border-slate-200 text-slate-600 hover:bg-slate-50 transition-all duration-300"
             >
               End Interview
             </Button>
-
             <div className="flex items-center gap-2">
-              <LiveMicrophone isActive={isStudentSpeaking} size="sm" />
-              <span className="text-xs text-violet-500">
+              <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${isStudentSpeaking ? "bg-blue-500 animate-pulse" : "bg-slate-200"}`} />
+              <span className="text-xs text-slate-400">
                 {isStudentSpeaking ? "Listening..." : "Waiting for Eva..."}
               </span>
             </div>

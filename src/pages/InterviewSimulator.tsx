@@ -53,8 +53,13 @@ const InterviewSimulator = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-950 via-violet-900 to-purple-900">
-      <div className="flex-1 container mx-auto px-4 py-12">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-white to-slate-100 relative overflow-hidden">
+      {/* Ambient glow blobs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/8 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/8 rounded-full blur-3xl" />
+      </div>
+      <div className="flex-1 container mx-auto px-4 py-12 relative z-10">
         <InterviewHeader status={status} university={university} />
 
         {status === "idle" && (
@@ -96,5 +101,6 @@ const InterviewSimulator = () => {
     </div>
   );
 };
+
 
 export default InterviewSimulator;
