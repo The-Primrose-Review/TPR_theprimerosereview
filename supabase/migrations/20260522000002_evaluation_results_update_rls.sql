@@ -3,3 +3,4 @@ CREATE POLICY "Students can update their own evaluation results"
   FOR UPDATE
   USING (auth.uid() = student_id)
   WITH CHECK (auth.uid() = student_id);
+  

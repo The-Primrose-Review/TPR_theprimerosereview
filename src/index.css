@@ -243,6 +243,12 @@
 }
 .pulse-border { animation: pulse-border 2s ease-in-out infinite; }
 
+@keyframes pulse-border-violet {
+  0%, 100% { border-color: rgba(124, 58, 237, 0.7); }
+  50% { border-color: rgba(124, 58, 237, 1); }
+}
+.pulse-border-violet { animation: pulse-border-violet 2s ease-in-out infinite; }
+
 @keyframes interviewer-speaking {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.02); }

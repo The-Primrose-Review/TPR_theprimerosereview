@@ -1,198 +1,95 @@
 
-import React, { useRef, useEffect } from "react";
-import { toast } from "sonner";
+import React, { useState, useEffect } from "react";
 import { useInterviewState } from "@/hooks/useInterviewState";
-import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
-import { useInterviewSpeech } from "@/hooks/useInterviewSpeech";
-import { FeedbackDisplay } from "@/components/FeedbackDisplay";
+import { useRealtimeInterview } from "@/hooks/useRealtimeInterview";
 import InterviewHeader from "@/components/interview/InterviewHeader";
 import WelcomeScreen from "@/components/interview/WelcomeScreen";
 import LoadingScreen from "@/components/interview/LoadingScreen";
 import InterviewContainer from "@/components/interview/InterviewContainer";
 import FinalFeedback from "@/components/interview/FinalFeedback";
 
+type InterviewStatus = "idle" | "preparing" | "active" | "ended";
+
 const InterviewSimulator = () => {
-  const {
-    status,
-    setStatus,
-    transcript,
-    setTranscript,
-    displayedTranscript,
-    setDisplayedTranscript,
-    feedback,
-    isListening,
-    setIsListening,
-    isSpeaking,
-    setIsSpeaking,
-    programName,
-    setProgramName,
-    currentQuestion,
-    questions,
-    currentQuestionIndex,
-    audioEnabled,
-    setAudioEnabled,
-    completedAnswer,
-    setCompletedAnswer,
-    fadeIn,
-    currentFeedback,
-    questionFeedbacks,
-    autoRecording,
-    setAutoRecording,
-    silenceTimeout,
-    setSilenceTimeout,
-    lastTranscriptLength,
-    setLastTranscriptLength,
-    startInterview,
-    submitResponse,
-    continueToNextQuestion,
-    resetInterview
-  } = useInterviewState();
+  const { programName, setProgramName, university, setUniversity, resetInterview } = useInterviewState();
+  const [status, setStatus] = useState<InterviewStatus>("idle");
 
   const {
-    resetSilenceTimer
-  } = useSpeechRecognition({
-    isListening,
-    autoRecording
-  });
+    connect,
+    disconnect,
+    connectionState,
+    isConnected,
+    isEvaSpeaking,
+    isStudentSpeaking,
+    evaTranscript,
+    lastEvaUtterance,
+    studentTranscript,
+  } = useRealtimeInterview();
 
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
-
-  // Initialize speech recognition
+  // Transition to active once WebRTC connects, or back to idle on error
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        recognitionRef.current = new SpeechRecognition();
-        recognitionRef.current.continuous = true;
-        recognitionRef.current.interimResults = true;
-
-        recognitionRef.current.onresult = (event) => {
-          const currentTranscript = Array.from(event.results)
-            .map(result => result[0])
-            .map(result => result.transcript)
-            .join("");
-
-          setTranscript(currentTranscript);
-
-          if (currentTranscript.length > lastTranscriptLength) {
-            setLastTranscriptLength(currentTranscript.length);
-            resetSilenceTimer();
-          }
-        };
-
-        recognitionRef.current.onend = () => {
-          if (isListening) {
-            recognitionRef.current?.start();
-          }
-        };
-      }
+    if (connectionState === "connected" && status === "preparing") {
+      setStatus("active");
     }
-
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-      if (silenceTimeout) {
-        clearTimeout(silenceTimeout);
-      }
-    };
-  }, [isListening, lastTranscriptLength, silenceTimeout, setLastTranscriptLength, resetSilenceTimer, setTranscript]);
-
-  // Auto-stop on 3 seconds of silence
-  useEffect(() => {
-    if (silenceTimeout) {
-      clearTimeout(silenceTimeout);
+    if (connectionState === "error" && status === "preparing") {
+      setStatus("idle");
     }
+  }, [connectionState, status]);
 
-    if (autoRecording && isListening) {
-      const timeout = setTimeout(() => {
-        stopListeningAndSubmit();
-      }, 3000);
+  const handleStart = async () => {
+    if (!programName) return;
+    setStatus("preparing");
+    await connect(programName, university);
+  };
 
-      setSilenceTimeout(timeout);
-    }
-  }, [autoRecording, isListening, lastTranscriptLength, silenceTimeout]);
+  const handleEnd = () => {
+    disconnect();
+    setStatus("ended");
+  };
 
-  const {
-    speakCurrentQuestion,
-    toggleListening,
-    stopListeningAndSubmit
-  } = useInterviewSpeech({
-    status,
-    currentQuestion,
-    audioEnabled,
-    isSpeaking,
-    setIsSpeaking,
-    isListening,
-    setIsListening,
-    autoRecording,
-    resetSilenceTimer,
-    setTranscript,
-    setDisplayedTranscript,
-    transcript,
-    setCompletedAnswer,
-    silenceTimeout,
-    setSilenceTimeout
-  });
-
-  const toggleAudio = () => {
-    setAudioEnabled(prev => !prev);
+  const handleReset = () => {
+    resetInterview();
+    setStatus("idle");
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-red-50">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-950 via-violet-900 to-purple-900">
       <div className="flex-1 container mx-auto px-4 py-12">
-        <InterviewHeader status={status} />
+        <InterviewHeader status={status} university={university} />
 
         {status === "idle" && (
           <WelcomeScreen
             programName={programName}
             setProgramName={setProgramName}
-            startInterview={startInterview}
+            university={university}
+            setUniversity={setUniversity}
+            startInterview={handleStart}
           />
         )}
 
         {status === "preparing" && (
-          <LoadingScreen programName={programName} />
+          <LoadingScreen programName={programName} university={university} />
         )}
 
-        {status === "interviewing" && (
+        {status === "active" && (
           <InterviewContainer
-            currentQuestion={currentQuestion}
-            isSpeaking={isSpeaking}
-            audioEnabled={audioEnabled}
-            toggleAudio={toggleAudio}
-            speakCurrentQuestion={speakCurrentQuestion}
-            currentQuestionIndex={currentQuestionIndex}
-            totalQuestions={questions.length}
-            isListening={isListening}
-            toggleListening={toggleListening}
-            displayedTranscript={displayedTranscript}
-            completedAnswer={completedAnswer}
-            resetInterview={resetInterview}
-            submitResponse={submitResponse}
-            autoRecording={autoRecording}
-            setAutoRecording={setAutoRecording}
-            fadeIn={fadeIn}
+            isEvaSpeaking={isEvaSpeaking}
+            isStudentSpeaking={isStudentSpeaking}
+            evaTranscript={evaTranscript}
+            lastEvaUtterance={lastEvaUtterance}
+            studentTranscript={studentTranscript}
+            isConnected={isConnected}
+            connectionState={connectionState}
+            endInterview={handleEnd}
+            university={university}
           />
         )}
 
-        {(status === "question-feedback" || status === "detailed-feedback") && currentFeedback && (
-          <FeedbackDisplay
-            feedback={currentFeedback}
-            questionText={currentQuestion}
-            userResponse={completedAnswer}
-            onContinue={continueToNextQuestion}
-            audioEnabled={audioEnabled}
-          />
-        )}
-
-        {status === "final-feedback" && (
+        {status === "ended" && (
           <FinalFeedback
-            feedback={feedback}
-            questionFeedbacks={questionFeedbacks}
-            questions={questions}
-            resetInterview={resetInterview}
+            university={university}
+            programName={programName}
+            onReset={handleReset}
           />
         )}
       </div>

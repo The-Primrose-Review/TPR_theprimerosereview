@@ -4,80 +4,56 @@ import EvaInterviewerSide from "./EvaInterviewerSide";
 import UserResponseSide from "./UserResponseSide";
 
 interface InterviewContainerProps {
-  currentQuestion: string;
-  isSpeaking: boolean;
-  audioEnabled: boolean;
-  toggleAudio: () => void;
-  speakCurrentQuestion: () => void;
-  currentQuestionIndex: number;
-  totalQuestions: number;
-  isListening: boolean;
-  toggleListening: () => void;
-  displayedTranscript: string;
-  completedAnswer: string;
-  resetInterview: () => void;
-  submitResponse: () => void;
-  autoRecording: boolean;
-  setAutoRecording: (auto: boolean) => void;
-  fadeIn: boolean;
+  isEvaSpeaking: boolean;
+  isStudentSpeaking: boolean;
+  evaTranscript: string;
+  lastEvaUtterance: string;
+  studentTranscript: string;
+  isConnected: boolean;
+  connectionState: string;
+  endInterview: () => void;
+  university?: string;
 }
 
 const InterviewContainer: React.FC<InterviewContainerProps> = ({
-  currentQuestion,
-  isSpeaking,
-  audioEnabled,
-  toggleAudio,
-  speakCurrentQuestion,
-  currentQuestionIndex,
-  totalQuestions,
-  isListening,
-  toggleListening,
-  displayedTranscript,
-  completedAnswer,
-  resetInterview,
-  submitResponse,
-  autoRecording,
-  setAutoRecording,
-  fadeIn
+  isEvaSpeaking,
+  isStudentSpeaking,
+  evaTranscript,
+  lastEvaUtterance,
+  studentTranscript,
+  isConnected,
+  connectionState,
+  endInterview,
+  university,
 }) => {
+  const getStatusMessage = () => {
+    if (!isConnected) return "Connecting...";
+    if (isEvaSpeaking) return "Eva is speaking — listen carefully";
+    if (isStudentSpeaking) return "Eva is listening to your response...";
+    return "Waiting for the next exchange...";
+  };
+
   return (
-    <div
-      className={`max-w-5xl mx-auto backdrop-blur-lg bg-white/80 p-6 md:p-8 rounded-2xl shadow-xl border border-red-200 transition-all duration-700 ${fadeIn ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
-    >
+    <div className="max-w-5xl mx-auto backdrop-blur-lg bg-white/90 p-6 md:p-8 rounded-2xl shadow-xl border border-violet-200 transition-all duration-700 opacity-100 scale-100">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-[650px]">
         <EvaInterviewerSide
-          currentQuestion={currentQuestion}
-          isSpeaking={isSpeaking}
-          audioEnabled={audioEnabled}
-          toggleAudio={toggleAudio}
-          speakCurrentQuestion={speakCurrentQuestion}
-          currentQuestionIndex={currentQuestionIndex}
-          totalQuestions={totalQuestions}
+          isEvaSpeaking={isEvaSpeaking}
+          evaTranscript={evaTranscript}
+          lastEvaUtterance={lastEvaUtterance}
+          university={university}
         />
 
         <UserResponseSide
-          isListening={isListening}
-          toggleListening={toggleListening}
-          displayedTranscript={displayedTranscript}
-          completedAnswer={completedAnswer}
-          resetInterview={resetInterview}
-          submitResponse={submitResponse}
-          autoRecording={autoRecording}
-          setAutoRecording={setAutoRecording}
+          isStudentSpeaking={isStudentSpeaking}
+          studentTranscript={studentTranscript}
+          endInterview={endInterview}
         />
       </div>
 
-      <div className="mt-6 flex flex-col items-center space-y-2">
-        <p className={`text-sm text-red-800 font-serif transition-opacity duration-300 ${isListening ? 'opacity-100' : 'opacity-70'} text-center max-w-2xl`}>
-          {isListening
-            ? "Recording in progress... We'll automatically stop when you finish speaking."
-            : autoRecording
-            ? "Recording will start automatically after the interviewer finishes speaking."
-            : "Click 'Record' to begin your response."
-          }
-        </p>
-        <p className="text-sm text-neutral-500 font-serif">
-          Question {currentQuestionIndex + 1} of {totalQuestions}
+      <div className="mt-6 flex items-center justify-center gap-3">
+        <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-amber-400'} ${isEvaSpeaking || isStudentSpeaking ? 'animate-pulse' : ''}`} />
+        <p className="text-sm text-violet-700 text-center">
+          {getStatusMessage()}
         </p>
       </div>
     </div>

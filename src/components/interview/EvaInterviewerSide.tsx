@@ -1,80 +1,67 @@
 
 import React from "react";
-import { Volume2, VolumeX, Play, GraduationCap } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { GraduationCap } from "lucide-react";
 import { AnimatedText } from "./AnimatedText";
 import LiveMicrophone from "./LiveMicrophone";
 
 interface EvaInterviewerSideProps {
-  currentQuestion: string;
-  isSpeaking: boolean;
-  audioEnabled: boolean;
-  toggleAudio: () => void;
-  speakCurrentQuestion: () => void;
-  currentQuestionIndex: number;
-  totalQuestions: number;
+  isEvaSpeaking: boolean;
+  evaTranscript: string;
+  lastEvaUtterance: string;
+  university?: string;
 }
 
 const EvaInterviewerSide: React.FC<EvaInterviewerSideProps> = ({
-  currentQuestion,
-  isSpeaking,
-  audioEnabled,
-  toggleAudio,
-  speakCurrentQuestion,
-  currentQuestionIndex,
-  totalQuestions,
+  isEvaSpeaking,
+  evaTranscript,
+  lastEvaUtterance,
+  university,
 }) => {
+  const displayText = isEvaSpeaking ? evaTranscript : lastEvaUtterance;
+  const placeholderText = "Eva is getting ready to speak...";
+
   return (
     <div className="flex flex-col h-full">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center space-x-2">
-          <GraduationCap className="h-5 w-5 text-red-800" />
-          <h2 className="text-xl font-serif font-semibold text-red-900">
-            Harvard Admissions Question {currentQuestionIndex + 1}/{totalQuestions}
-          </h2>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={toggleAudio}
-          title={audioEnabled ? "Mute interviewer" : "Unmute interviewer"}
-          className="h-8 w-8 p-0 rounded-full hover:bg-red-50 transition-all"
-        >
-          {audioEnabled ? (
-            <Volume2 className="h-4 w-4 text-red-800" />
-          ) : (
-            <VolumeX className="h-4 w-4 text-neutral-500" />
-          )}
-        </Button>
+      <div className="flex items-center space-x-2 mb-4">
+        <GraduationCap className="h-5 w-5 text-violet-700" />
+        <h2 className="text-xl font-semibold text-violet-900">
+          Eva — {university || "Admissions"} Interviewer
+        </h2>
       </div>
 
-      <div className="flex-1 relative p-6 bg-gradient-to-r from-red-50 to-rose-50 rounded-xl border-2 border-red-200 transition-all duration-300 hover:shadow-md">
+      <div className="flex-1 relative p-6 bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl border-2 border-violet-200 transition-all duration-300 hover:shadow-md">
         <div className="flex items-center justify-center mb-6">
           <LiveMicrophone
-            isActive={isSpeaking}
+            isActive={isEvaSpeaking}
             size="lg"
-            altText="Harvard Interviewer"
+            altText="Eva AI Interviewer"
           />
         </div>
 
-        <div className="mt-6 bg-white p-5 rounded-lg border border-red-200 shadow-sm">
-          <AnimatedText
-            text={currentQuestion}
-            className="text-lg text-red-900 leading-relaxed font-serif"
-          />
-
-          {!isSpeaking && audioEnabled && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={speakCurrentQuestion}
-              className="mt-4 h-8 text-red-800 hover:bg-red-50 transition-all font-serif"
-            >
-              <Play className="h-3 w-3 mr-2" />
-              Replay question
-            </Button>
+        <div className="mt-6 bg-white p-5 rounded-xl border border-violet-200 shadow-sm min-h-[120px] flex items-start">
+          {displayText ? (
+            <AnimatedText
+              text={displayText}
+              className="text-base text-violet-900 leading-relaxed"
+              key={displayText}
+            />
+          ) : (
+            <p className="text-sm text-neutral-400 italic">{placeholderText}</p>
           )}
         </div>
+
+        {isEvaSpeaking && (
+          <div className="mt-3 flex items-center gap-2">
+            <div className="flex items-end h-4 space-x-0.5">
+              <div className="w-0.5 h-2 bg-violet-400 animate-sound-wave-1"></div>
+              <div className="w-0.5 h-3 bg-violet-400 animate-sound-wave-2"></div>
+              <div className="w-0.5 h-4 bg-violet-400 animate-sound-wave-3"></div>
+              <div className="w-0.5 h-3 bg-violet-400 animate-sound-wave-2"></div>
+              <div className="w-0.5 h-2 bg-violet-400 animate-sound-wave-1"></div>
+            </div>
+            <span className="text-xs text-violet-600">Eva is speaking...</span>
+          </div>
+        )}
       </div>
     </div>
   );
