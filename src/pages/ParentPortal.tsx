@@ -4,9 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
   GraduationCap, CheckCircle, Clock, AlertTriangle,
-  BookOpen, DollarSign, TrendingUp, Trophy,
+  BookOpen, TrendingUp, Trophy,
   ChevronDown, ChevronUp, Star, Calendar, Zap, Shield,
-  Hourglass,
+  Hourglass, FileText, Award,
 } from "lucide-react";
 import { useParentPortalData } from "@/hooks/useParentPortalData";
 
@@ -48,6 +48,151 @@ function ComingSoon({ label }: { label: string }) {
         <p className="text-sm font-semibold text-slate-500">Coming Soon</p>
         <p className="text-xs text-slate-400 mt-0.5">{label} will appear here once available.</p>
       </div>
+    </div>
+  );
+}
+
+// ── Strength Profile ──────────────────────────────────────────────────────────
+
+interface StrengthProfileProps {
+  gpa: string | number | null;
+  satScore: string | number | null;
+  actScore: string | number | null;
+  essaysCompleted: number;
+  totalEssays: number;
+  recsCompleted: number;
+  totalRecs: number;
+  overallProgress: number;
+  universities: { strategy: string }[];
+}
+
+function StrengthProfile({
+  gpa, satScore, actScore,
+  essaysCompleted, totalEssays,
+  recsCompleted, totalRecs,
+  overallProgress,
+  universities,
+}: StrengthProfileProps) {
+  // Academic score: GPA normalized 2.0→25 to 4.0→100, plus optional test score bonus
+  const gpaVal = gpa != null ? parseFloat(String(gpa)) : null;
+  const satVal = satScore != null ? parseInt(String(satScore)) : null;
+  const actVal = actScore != null ? parseInt(String(actScore)) : null;
+
+  let academicScore: number | null = null;
+  if (gpaVal !== null && !isNaN(gpaVal)) {
+    const base = Math.round(Math.min(100, Math.max(20, ((gpaVal - 2.0) / 2.0) * 80 + 20)));
+    if (satVal && !isNaN(satVal)) {
+      academicScore = Math.min(100, base + Math.round(((satVal - 400) / 1200) * 15));
+    } else if (actVal && !isNaN(actVal)) {
+      academicScore = Math.min(100, base + Math.round(((actVal - 1) / 35) * 15));
+    } else {
+      academicScore = base;
+    }
+  }
+
+  const essayScore  = totalEssays > 0 ? Math.round((essaysCompleted / totalEssays) * 100) : null;
+  const recScore    = totalRecs   > 0 ? Math.round((recsCompleted   / totalRecs)   * 100) : null;
+  const appScore    = overallProgress > 0 ? overallProgress : null;
+
+  const reachCount  = universities.filter(u => u.strategy === "Reach").length;
+  const targetCount = universities.filter(u => u.strategy === "Target").length;
+  const safetyCount = universities.filter(u => u.strategy === "Safety").length;
+
+  const barColor = (s: number | null) => {
+    if (s === null) return "bg-slate-200";
+    if (s >= 80)   return "bg-emerald-500";
+    if (s >= 65)   return "bg-teal-500";
+    if (s >= 45)   return "bg-amber-400";
+    return "bg-red-400";
+  };
+
+  const statusLabel = (s: number | null): { text: string; cls: string } => {
+    if (s === null) return { text: "No data",    cls: "text-slate-400 bg-slate-50 border-slate-200" };
+    if (s >= 80)   return { text: "Strong",      cls: "text-emerald-700 bg-emerald-50 border-emerald-200" };
+    if (s >= 65)   return { text: "On Track",    cls: "text-teal-700 bg-teal-50 border-teal-200" };
+    if (s >= 45)   return { text: "In Progress", cls: "text-amber-700 bg-amber-50 border-amber-200" };
+    return              { text: "Needs Work",    cls: "text-red-700 bg-red-50 border-red-200" };
+  };
+
+  const dimensions = [
+    {
+      label: "Academic Strength",
+      score: academicScore,
+      detail: gpaVal != null
+        ? `GPA ${gpaVal.toFixed(2)}${satVal ? ` · SAT ${satVal}` : actVal ? ` · ACT ${actVal}` : ""}`
+        : "GPA not on file",
+      icon: <GraduationCap className="h-4 w-4 text-violet-500" />,
+    },
+    {
+      label: "Essay Progress",
+      score: essayScore,
+      detail: totalEssays > 0 ? `${essaysCompleted} of ${totalEssays} essays complete` : "No essays on file",
+      icon: <FileText className="h-4 w-4 text-blue-500" />,
+    },
+    {
+      label: "Recommendations",
+      score: recScore,
+      detail: totalRecs > 0 ? `${recsCompleted} of ${totalRecs} letters secured` : "None requested yet",
+      icon: <Award className="h-4 w-4 text-pink-500" />,
+    },
+    {
+      label: "App Readiness",
+      score: appScore,
+      detail: "Average completion across all schools",
+      icon: <TrendingUp className="h-4 w-4 text-amber-500" />,
+    },
+  ];
+
+  return (
+    <div className="space-y-5">
+      {dimensions.map((dim, i) => {
+        const sl = statusLabel(dim.score);
+        return (
+          <div key={i}>
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-2">
+                {dim.icon}
+                <span className="text-sm font-semibold text-foreground">{dim.label}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${sl.cls}`}>
+                  {sl.text}
+                </span>
+                <span className="text-sm font-bold text-foreground w-9 text-right tabular-nums">
+                  {dim.score != null ? `${dim.score}%` : "—"}
+                </span>
+              </div>
+            </div>
+            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-700 ${barColor(dim.score)}`}
+                style={{ width: dim.score != null ? `${dim.score}%` : "0%" }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">{dim.detail}</p>
+          </div>
+        );
+      })}
+
+      {universities.length > 0 && (
+        <div className="pt-4 border-t border-slate-100">
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            College List Balance
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: "Reach",  count: reachCount,  bg: "bg-red-50",     border: "border-red-100",    num: "text-red-700",     sub: "text-red-400" },
+              { label: "Target", count: targetCount, bg: "bg-purple-50",  border: "border-purple-100", num: "text-purple-700",  sub: "text-purple-400" },
+              { label: "Safety", count: safetyCount, bg: "bg-emerald-50", border: "border-emerald-100",num: "text-emerald-700", sub: "text-emerald-400" },
+            ].map(({ label, count, bg, border, num, sub }) => (
+              <div key={label} className={`${bg} border ${border} rounded-xl py-3 text-center`}>
+                <p className={`text-xl font-bold ${num}`}>{count}</p>
+                <p className={`text-xs font-medium ${sub} mt-0.5`}>{label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -508,14 +653,28 @@ const ParentPortal = () => {
           )}
         </Card>
 
-        {/* Strength Profile — coming soon */}
+        {/* Strength Profile */}
         <Card className="p-6 rounded-2xl border border-slate-100 shadow-sm">
           <h3 className="text-base font-semibold text-foreground mb-1 flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-violet-500" />
             {firstName}'s Strength Profile
           </h3>
-          <p className="text-sm text-muted-foreground mb-4">How {firstName} is positioning for admissions.</p>
-          <ComingSoon label="Strength profile data" />
+          <p className="text-sm text-muted-foreground mb-5">How {firstName} is positioning for admissions.</p>
+          {live.hasStudent ? (
+            <StrengthProfile
+              gpa={live.studentAcademics?.gpa ?? null}
+              satScore={live.studentAcademics?.sat_score ?? null}
+              actScore={live.studentAcademics?.act_score ?? null}
+              essaysCompleted={essaysCompleted}
+              totalEssays={totalEssays}
+              recsCompleted={recsCompleted}
+              totalRecs={totalRecs}
+              overallProgress={overallProgress}
+              universities={universities}
+            />
+          ) : (
+            <ComingSoon label="Strength profile data" />
+          )}
         </Card>
       </div>
 
