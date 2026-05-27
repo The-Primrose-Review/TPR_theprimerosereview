@@ -55,29 +55,33 @@ const EvaInterviewerSide: React.FC<EvaInterviewerSideProps> = ({
 
       <div className="flex-1 relative p-6 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col">
         {/* Orb */}
-        <div className="flex flex-col items-center justify-center mb-4 relative">
-          <AnimatePresence>
-            {isEvaSpeaking && (
-              <>
-                <motion.div
-                  key="ring1"
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: [1, 1.5, 1], opacity: [0.3, 0, 0.3] }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute w-24 h-24 rounded-full bg-primary/20"
-                />
-                <motion.div
-                  key="ring2"
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: [1, 1.8, 1], opacity: [0.15, 0, 0.15] }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-                  className="absolute w-24 h-24 rounded-full bg-primary/10"
-                />
-              </>
-            )}
-          </AnimatePresence>
+        <div className="flex flex-col items-center mb-4">
+          {/* Tight wrapper so rings anchor to the orb, not the whole column */}
+          <div className="relative flex items-center justify-center w-20 h-20 mb-3">
+            <AnimatePresence>
+              {isEvaSpeaking && (
+                <>
+                  <motion.div
+                    key="ring1"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: [1, 1.8, 1], opacity: [0.3, 0, 0.3] }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                    className="absolute inset-0 rounded-full bg-primary/20"
+                    style={{ margin: "-20px" }}
+                  />
+                  <motion.div
+                    key="ring2"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: [1, 2, 1], opacity: [0.15, 0, 0.15] }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                    className="absolute inset-0 rounded-full bg-primary/10"
+                    style={{ margin: "-36px" }}
+                  />
+                </>
+              )}
+            </AnimatePresence>
 
           <motion.div
             style={{ scale: pulseScale }}
@@ -109,9 +113,10 @@ const EvaInterviewerSide: React.FC<EvaInterviewerSideProps> = ({
               )}
             </AnimatePresence>
           </motion.div>
+          </div>{/* end orb wrapper */}
 
           {/* Wave bars */}
-          <div className="flex items-end justify-center gap-[2px] h-8 mt-3 w-full">
+          <div className="flex items-end justify-center gap-[2px] h-8 w-full">
             {waveBars.map((i) => (
               <motion.div
                 key={i}
