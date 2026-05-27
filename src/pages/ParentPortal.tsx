@@ -8,6 +8,7 @@ import {
   ChevronDown, ChevronUp, Star, Calendar, Zap, Shield,
   Hourglass, FileText, Award,
 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useParentPortalData } from "@/hooks/useParentPortalData";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -203,22 +204,42 @@ const LESSONS = [
     id: "admissions",
     title: "How College Admissions Works",
     tag: "Start here",
-    readTime: "6 min read",
+    readTime: "8 min read",
     gradient: "from-violet-500 to-purple-600",
     emoji: "🎓",
     content: (
       <>
         <p className="text-base text-muted-foreground leading-relaxed">
-          Most universities follow <strong>holistic review</strong> — admissions officers evaluate several parts of the application together rather than relying on a single number.
+          Most selective universities use what's called <strong>holistic review</strong> — admissions officers look at the whole student, not just a GPA or test score. Understanding how this process actually works can help you support your child without adding unnecessary pressure.
         </p>
-        <ul className="space-y-2 mt-3 text-base text-muted-foreground">
-          <li><strong>Academic performance:</strong> Grades remain the most important factor.</li>
-          <li><strong>Standardized testing:</strong> Many universities are now test-optional.</li>
-          <li><strong>Essays:</strong> Personal statements reveal who the student is beyond grades.</li>
-          <li><strong>Extracurriculars:</strong> Depth in a few areas stands out more than many short-term activities.</li>
-          <li><strong>Recommendation letters:</strong> Teachers provide context about character and work ethic.</li>
+
+        <h4 className="text-sm font-semibold text-foreground mt-5 mb-2">What goes into a holistic application?</h4>
+        <ul className="space-y-3 text-sm text-muted-foreground">
+          <li><strong>Academic performance:</strong> Grades and course rigor are the most important factor. Admissions officers want to see that students challenged themselves — an A in AP Chemistry means more than an A in a standard course. Grade trends matter too: improving grades junior year can offset a weaker freshman year.</li>
+          <li><strong>Standardized testing:</strong> Many universities are now test-optional or test-free, but strong scores still help at test-optional schools. If your child has a 1500+ SAT or 34+ ACT, submitting it will likely help. If not, research each school's policy before deciding.</li>
+          <li><strong>Essays:</strong> The personal statement and supplemental essays give your child a voice in the application. Admissions officers read thousands of essays — they're looking for something human, not something impressive. This is one area where parents should step back and let the student lead.</li>
+          <li><strong>Extracurricular activities:</strong> Quality over quantity. Four years of sustained commitment to one or two activities tells a stronger story than a long list of short-term clubs. Colleges want to understand who your child is outside the classroom.</li>
+          <li><strong>Recommendation letters:</strong> Two teacher letters and a counselor letter are standard. Teachers who know your child well — not just the ones who gave the highest grade — tend to write the most compelling letters.</li>
+          <li><strong>Demonstrated interest:</strong> Some schools track whether students have visited, attended info sessions, or emailed admissions. It signals genuine fit, not just a safety school mentality.</li>
         </ul>
-        <p className="mt-3 text-base text-muted-foreground">Decisions fall into: <strong>Accepted</strong>, <strong>Waitlisted</strong>, <strong>Deferred</strong>, or <strong>Denied</strong>. Encouragement from parents makes the biggest difference.</p>
+
+        <h4 className="text-sm font-semibold text-foreground mt-5 mb-2">How applications are actually read</h4>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          At most schools, each application gets at least two reads. A regional admissions officer reviews it first, then a committee makes the final call. Readers spend roughly 8–12 minutes per application at peak season. The goal is to find students who would thrive at that specific school — fit matters as much as achievement.
+        </p>
+
+        <h4 className="text-sm font-semibold text-foreground mt-5 mb-2">Decision types explained</h4>
+        <ul className="space-y-2 text-sm text-muted-foreground">
+          <li><strong>Accepted:</strong> Offered admission. Your child has until May 1 (National Candidates Reply Date) to decide.</li>
+          <li><strong>Waitlisted:</strong> Not admitted now, but could be offered a spot if admitted students decline. Odds vary widely by school and year.</li>
+          <li><strong>Deferred:</strong> An early applicant whose decision is moved to the regular decision pool. Still fully in consideration — not a soft rejection.</li>
+          <li><strong>Denied:</strong> Not offered admission this cycle. Disappointing, but rarely the end of the story. Many students thrive at their second-choice school.</li>
+        </ul>
+
+        <h4 className="text-sm font-semibold text-foreground mt-5 mb-2">How you can help</h4>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          The most effective thing parents can do is stay calm. Your child is already under significant pressure. Expressing confidence in them — regardless of outcomes — makes a measurable difference. Help with logistics (deadlines, documents, financial aid forms) rather than content. And remind them that where they go matters far less than what they do once they get there.
+        </p>
       </>
     ),
   },
@@ -226,22 +247,44 @@ const LESSONS = [
     id: "essay",
     title: "What Makes a Strong Essay",
     tag: "High impact",
-    readTime: "5 min read",
+    readTime: "7 min read",
     gradient: "from-pink-500 to-rose-600",
     emoji: "✍️",
     content: (
       <>
         <p className="text-base text-muted-foreground leading-relaxed">
-          Strong essays don't try to impress — they reveal something genuine about how a student thinks and experiences the world.
+          The college essay is one of the most misunderstood parts of the application. Parents often want their child to write something impressive — to talk about a big achievement, a leadership role, or a meaningful mission trip. Admissions officers have read thousands of those. What actually stands out is something far simpler: a student writing honestly about something true.
         </p>
-        <ul className="space-y-2 mt-3 text-base text-muted-foreground">
-          <li><strong>Authenticity:</strong> Essays that feel overly polished are easy to spot.</li>
-          <li><strong>Specific detail:</strong> Real moments say far more than broad statements about ambition.</li>
-          <li><strong>Reflection:</strong> Self-awareness is often more powerful than the story itself.</li>
-          <li><strong>Voice:</strong> Natural and clear writing, not overly formal.</li>
-          <li><strong>Focus:</strong> One idea explored deeply beats many ideas covered shallowly.</li>
+
+        <h4 className="text-sm font-semibold text-foreground mt-5 mb-2">What admissions officers are actually looking for</h4>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          The essay answers one question the rest of the application can't: <em>Who is this person?</em> Officers want to hear the student's voice — how they think, what they notice, what matters to them. A well-written essay about learning to cook with a grandmother can be more compelling than a generic essay about founding a club.
+        </p>
+
+        <h4 className="text-sm font-semibold text-foreground mt-5 mb-2">The five qualities of a strong essay</h4>
+        <ul className="space-y-3 text-sm text-muted-foreground">
+          <li><strong>Authenticity:</strong> Admissions officers can tell when an essay has been heavily edited by a parent or tutor. The goal isn't a perfectly polished essay — it's an honest one. Awkward sentences with real voice beat flawless prose with no personality.</li>
+          <li><strong>Specific detail:</strong> "I love helping people" means nothing. "I spent six months teaching my grandfather to use FaceTime so he could see my sister graduate" means everything. Concrete, specific moments do the work that abstract statements can't.</li>
+          <li><strong>Reflection:</strong> The event itself is rarely what the essay is about — it's what the student learned, how they changed, or what they now see differently. Self-awareness and maturity are what officers are looking for, not an impressive résumé of experiences.</li>
+          <li><strong>Voice:</strong> The essay should sound like the student — not like a formal academic paper and not like a corporate cover letter. If your child speaks casually, some of that should come through. If they're funny, the essay can be too.</li>
+          <li><strong>Focus:</strong> One idea explored deeply beats five ideas covered shallowly. The best essays stay close to a single moment, theme, or insight. Trying to cover everything produces an essay that says nothing.</li>
         </ul>
-        <p className="mt-3 text-base text-muted-foreground">Parents support students best by encouraging independence in the writing process.</p>
+
+        <h4 className="text-sm font-semibold text-foreground mt-5 mb-2">Common topics — and what makes them work or fail</h4>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Sports injuries, immigrant family stories, and mission trips are among the most common essay topics. None of these are inherently bad — but they require a genuinely personal angle to succeed. The question isn't <em>what happened</em>, it's <em>what does this reveal about how this specific student sees the world</em>?
+        </p>
+
+        <h4 className="text-sm font-semibold text-foreground mt-5 mb-2">How parents can help (and what to avoid)</h4>
+        <ul className="space-y-2 text-sm text-muted-foreground">
+          <li><strong>Do:</strong> Read a draft and share how it made you feel as a reader — not whether it's impressive, but whether you learned something new about your child.</li>
+          <li><strong>Do:</strong> Ask questions: "What do you want the admissions officer to remember about you after reading this?"</li>
+          <li><strong>Don't:</strong> Rewrite sentences or suggest specific stories. The moment the essay sounds like you, it stops being their application.</li>
+          <li><strong>Don't:</strong> Compare their draft to essays you've read online. Every student's voice is different, and the published "successful" essays often aren't representative.</li>
+        </ul>
+        <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
+          The best thing you can do is create space for your child to write — and then get out of the way.
+        </p>
       </>
     ),
   },
@@ -249,18 +292,44 @@ const LESSONS = [
     id: "financial-aid",
     title: "Financial Aid Explained",
     tag: "Essential reading",
-    readTime: "4 min read",
+    readTime: "8 min read",
     gradient: "from-emerald-500 to-teal-600",
     emoji: "💰",
     content: (
       <>
-        <p className="text-base text-muted-foreground leading-relaxed">Universities offer several types of financial support that can significantly reduce the cost of attendance.</p>
-        <ul className="space-y-2 mt-3 text-base text-muted-foreground">
-          <li><strong>Need-based aid:</strong> Submit the FAFSA and CSS Profile to qualify.</li>
-          <li><strong>Merit scholarships:</strong> Awarded for academic achievement or talent — not tied to financial need.</li>
-          <li><strong>Institutional grants:</strong> Often the largest source of aid — and don't need to be repaid.</li>
+        <p className="text-base text-muted-foreground leading-relaxed">
+          The sticker price of a university is almost never what families actually pay. Understanding how financial aid works — and acting on it early — can make an enormous difference to what college ultimately costs your family.
+        </p>
+
+        <h4 className="text-sm font-semibold text-foreground mt-5 mb-2">The two forms you need to know</h4>
+        <ul className="space-y-3 text-sm text-muted-foreground">
+          <li><strong>FAFSA (Free Application for Federal Student Aid):</strong> Required by virtually every US university. Opens October 1 for the following academic year. Based on your tax return from two years prior (e.g., 2024–25 uses 2022 taxes). File as early as possible — some aid is first-come, first-served. Completing the FAFSA is free.</li>
+          <li><strong>CSS Profile:</strong> Required by ~400 private colleges in addition to the FAFSA. More detailed than the FAFSA — it factors in home equity, retirement assets, and non-custodial parent income. Each school receives the profile separately, and some charge a fee per submission. Check each school's financial aid page to confirm requirements.</li>
         </ul>
-        <p className="mt-3 text-base text-muted-foreground">Key distinction: <strong>grants and scholarships</strong> are free money. <strong>Loans</strong> must be repaid. Financial aid deadlines often come earlier than application deadlines.</p>
+
+        <h4 className="text-sm font-semibold text-foreground mt-5 mb-2">Types of aid — and the critical difference</h4>
+        <ul className="space-y-3 text-sm text-muted-foreground">
+          <li><strong>Grants and institutional aid:</strong> Free money from the university — the largest and most valuable form of aid. Does not need to be repaid. Highly selective schools with large endowments (Harvard, Princeton, MIT, etc.) often meet 100% of demonstrated financial need. Don't assume these schools are unaffordable — they may be less expensive than lower-ranked alternatives for your family.</li>
+          <li><strong>Federal grants (Pell Grant):</strong> Need-based federal money for lower-income families. Up to ~$7,000/year. Also does not need to be repaid.</li>
+          <li><strong>Merit scholarships:</strong> Awarded for academic achievement, talent, or other criteria — not based on financial need. Some schools use merit aid aggressively to attract high-achieving students. Others (including most Ivies) offer need-based aid only.</li>
+          <li><strong>Work-study:</strong> A federal program allowing students to earn money through part-time jobs, usually on campus. The amount is limited but can supplement other aid.</li>
+          <li><strong>Loans:</strong> Must be repaid with interest. Federal loans (Stafford, PLUS) are generally more favorable than private loans. Minimize borrowing where possible — but don't let fear of loans cause your child to turn down a better opportunity.</li>
+        </ul>
+
+        <h4 className="text-sm font-semibold text-foreground mt-5 mb-2">Understanding your financial aid offer</h4>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          When offers arrive in March/April, compare them carefully. Look at the <em>net price</em> (total cost minus grants and scholarships) — not the sticker price. Two schools with very different list prices may cost your family the same amount. Be wary of offers that include large loan amounts labeled as "aid" — loans increase the apparent generosity of the package without actually reducing your cost.
+        </p>
+
+        <h4 className="text-sm font-semibold text-foreground mt-5 mb-2">Can you negotiate?</h4>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Yes — many families don't know this. If your financial circumstances changed since filing taxes (job loss, medical expenses, divorce), contact each school's financial aid office and explain. Schools can issue a "professional judgment" adjustment. If your child is admitted to multiple schools, you can also ask schools to match a more competitive offer from a peer institution. Be polite, specific, and provide documentation. It doesn't always work — but it often does.
+        </p>
+
+        <h4 className="text-sm font-semibold text-foreground mt-5 mb-2">Key deadlines to track</h4>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Financial aid deadlines are often earlier than application deadlines — sometimes by weeks. Missing the priority financial aid deadline at a school can mean significantly less money, even if your child is admitted. Add each school's financial aid deadline to your family calendar as soon as applications are submitted.
+        </p>
       </>
     ),
   },
@@ -268,18 +337,42 @@ const LESSONS = [
     id: "early-decision",
     title: "Early Decision vs Regular Decision",
     tag: "Strategy guide",
-    readTime: "5 min read",
+    readTime: "7 min read",
     gradient: "from-amber-500 to-orange-600",
     emoji: "📅",
     content: (
       <>
-        <p className="text-base text-muted-foreground leading-relaxed">Students have several timing options — each with different implications.</p>
-        <ul className="space-y-2 mt-3 text-base text-muted-foreground">
-          <li><strong>Early Decision (ED):</strong> Apply in November; if admitted, enrollment is <em>binding</em>. Only apply ED if it's clearly the first choice.</li>
-          <li><strong>Early Action (EA):</strong> Apply early, get an early decision — but <em>not binding</em>.</li>
-          <li><strong>Regular Decision (RD):</strong> Standard January deadlines. Allows comparison of multiple offers.</li>
+        <p className="text-base text-muted-foreground leading-relaxed">
+          One of the most consequential decisions in the application process is <em>when</em> to apply — not just <em>where</em>. The timing options each carry different implications for admission odds, financial flexibility, and stress management.
+        </p>
+
+        <h4 className="text-sm font-semibold text-foreground mt-5 mb-2">The full menu of timing options</h4>
+        <ul className="space-y-3 text-sm text-muted-foreground">
+          <li><strong>Early Decision I (ED I):</strong> Apply by early November; decision by mid-December. If admitted, enrollment is <em>legally binding</em> — your child must withdraw all other applications and attend. ED I acceptance rates are often meaningfully higher than regular decision rates at the same school, because demonstrated commitment is valuable to admissions. Only use ED I if a school is genuinely your child's first choice and your family can afford it without comparing financial aid offers.</li>
+          <li><strong>Early Decision II (ED II):</strong> Same binding commitment, but with a January deadline and February decision. A good option if your child needs more time to find their first choice, or if they were deferred or rejected by their ED I school.</li>
+          <li><strong>Early Action (EA):</strong> Apply early (October–November), hear back by December–January, but the decision is <em>not binding</em>. Your child can still apply to other schools and has until May 1 to decide. Many strong students apply EA wherever it's available — there's little downside.</li>
+          <li><strong>Restrictive Early Action (REA) / Single-Choice Early Action:</strong> Offered by a small number of schools (Harvard, Yale, Stanford, Princeton). Non-binding, but students agree not to apply ED or EA anywhere else. An important restriction to understand before applying.</li>
+          <li><strong>Regular Decision (RD):</strong> Standard January 1–15 deadlines. Decisions arrive March–April. Gives students maximum flexibility to compare schools, wait-and-see on grades, and evaluate financial aid packages side-by-side before committing.</li>
+          <li><strong>Rolling Admissions:</strong> Some schools (many public universities) review applications as they arrive and notify students within weeks. Applying early under rolling admissions is almost always advantageous — spots fill over time.</li>
         </ul>
-        <p className="mt-3 text-base text-muted-foreground">A balanced plan with a range of schools and timelines reduces pressure.</p>
+
+        <h4 className="text-sm font-semibold text-foreground mt-5 mb-2">The financial risk of Early Decision</h4>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          This is the part families most often overlook. By committing to attend before seeing a financial aid offer, you give up your ability to compare packages or negotiate with competing schools. Most ED agreements do include a financial hardship clause — if the aid package makes attendance genuinely impossible, you may be released from the commitment. But the bar is high. Talk honestly with your child and their counselor about whether ED is the right financial decision for your family before applying.
+        </p>
+
+        <h4 className="text-sm font-semibold text-foreground mt-5 mb-2">Building a balanced timeline</h4>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Most students apply to 10–15 schools across three categories: reach, target, and safety. A strong strategy might include one ED or EA application to a first-choice school, several EA applications to well-matched targets, and a few RD applications to safety schools where the student would genuinely be happy. Spreading deadlines reduces the November crunch and gives your child more processing time for each application.
+        </p>
+
+        <h4 className="text-sm font-semibold text-foreground mt-5 mb-2">What parents should watch for</h4>
+        <ul className="space-y-2 text-sm text-muted-foreground">
+          <li>Watch for schools your child added for prestige rather than genuine fit — these rarely produce satisfying outcomes even when admitted.</li>
+          <li>Make sure your child understands the binding nature of ED before applying — some students apply without fully appreciating what they're committing to.</li>
+          <li>Don't push for ED at a school primarily because the acceptance rate looks better. The higher rate reflects student commitment, not a strategic shortcut.</li>
+          <li>A balanced list with a few genuine safeties is more important than optimizing every early deadline. Uncertainty is part of this process — help your child sit with it rather than try to eliminate it.</li>
+        </ul>
       </>
     ),
   },
@@ -356,6 +449,12 @@ const ParentPortal = () => {
         })),
       ]
     : [];
+
+  const chartData = universities.map(u => ({
+    name: u.name.length > 24 ? u.name.slice(0, 22) + "…" : u.name,
+    completion: u.completionPct,
+    strategy: u.strategy,
+  }));
 
   const CIRC      = 2 * Math.PI * 38;
   const strokeDash = (overallProgress / 100) * CIRC;
@@ -624,6 +723,52 @@ const ParentPortal = () => {
         )}
       </Card>
 
+      {/* ── Application Progress Chart ── */}
+      {live.hasStudent && universities.length > 0 && (
+        <Card className="p-6 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="mb-5">
+            <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-violet-500" />
+              Application Progress
+            </h3>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Completion across {firstName}'s {universities.length} school{universities.length !== 1 ? "s" : ""}
+            </p>
+          </div>
+          <ResponsiveContainer width="100%" height={Math.max(universities.length * 52, 80)}>
+            <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 48, left: 0, bottom: 0 }}>
+              <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis type="category" dataKey="name" width={160} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+              <Tooltip
+                formatter={(value) => [`${value}%`, "Completion"]}
+                contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 12 }}
+                cursor={{ fill: "rgba(0,0,0,0.04)" }}
+              />
+              <Bar dataKey="completion" radius={[0, 6, 6, 0]} maxBarSize={28}>
+                {chartData.map((entry, i) => (
+                  <Cell
+                    key={i}
+                    fill={
+                      entry.strategy === "Reach"  ? "#f87171" :
+                      entry.strategy === "Safety" ? "#34d399" :
+                                                    "#a78bfa"
+                    }
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="flex gap-5 mt-4 text-xs text-muted-foreground">
+            {["Reach", "Target", "Safety"].map((s) => (
+              <span key={s} className="flex items-center gap-1.5">
+                <span className={`w-2.5 h-2.5 rounded-full inline-block ${s === "Reach" ? "bg-red-400" : s === "Target" ? "bg-violet-400" : "bg-emerald-400"}`} />
+                {s}
+              </span>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {/* ── Weekly Snapshot + Strength Profile ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Weekly Snapshot */}
@@ -637,7 +782,7 @@ const ParentPortal = () => {
           {!live.hasStudent ? (
             <ComingSoon label="Weekly activity" />
           ) : weekActivity.length === 0 ? (
-            <p className="text-sm text-muted-foreground italic">No activity this week yet.</p>
+            <p className="text-sm text-muted-foreground italic">No activity from {firstName} this week yet — check back soon.</p>
           ) : (
             <div className="space-y-2.5">
               {weekActivity.map((item, i) => (

@@ -5,7 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Send, MessageSquare, AlertCircle, Paperclip, CheckCheck, Check } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
+import { Search, Send, MessageSquare, AlertCircle, Paperclip, CheckCheck, Check, Plus } from "lucide-react";
 
 type DBConversation = {
   id: string;
@@ -35,6 +38,11 @@ const ParentMessages = () => {
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [showNewConvDialog, setShowNewConvDialog] = useState(false);
+  const [linkedStudentId, setLinkedStudentId] = useState<string | null>(null);
+  const [linkedCounselorId, setLinkedCounselorId] = useState<string | null>(null);
+  const [linkedCounselorName, setLinkedCounselorName] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // ── Load data ──────────────────────────────────────────────────
@@ -44,6 +52,32 @@ const ParentMessages = () => {
       if (!userData.user) return;
       const uid = userData.user.id;
       setUserId(uid);
+
+      // Look up linked student and their counselor for "New Message" flow
+      const { data: assignment } = await supabase
+        .from("parent_student_assignments")
+        .select("student_id")
+        .eq("parent_id", uid)
+        .maybeSingle();
+
+      if (assignment?.student_id) {
+        setLinkedStudentId(assignment.student_id);
+        const { data: counselorLink } = await supabase
+          .from("student_counselor_assignments")
+          .select("counselor_id")
+          .eq("student_id", assignment.student_id)
+          .maybeSingle();
+
+        if (counselorLink?.counselor_id) {
+          setLinkedCounselorId(counselorLink.counselor_id);
+          const { data: counselorProf } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("user_id", counselorLink.counselor_id)
+            .single();
+          setLinkedCounselorName(counselorProf?.full_name ?? null);
+        }
+      }
 
       const { data: convData } = await supabase
         .from("conversations")
@@ -187,6 +221,43 @@ const ParentMessages = () => {
     setNewMessage("");
   };
 
+  // ── Create new conversation with counselor ─────────────────────
+  const createConversation = async () => {
+    if (!userId || !linkedStudentId || !linkedCounselorId) return;
+    setCreating(true);
+
+    // If a conversation already exists between this parent, student, and counselor, just select it
+    const existing = conversations.find(
+      (c) => c.student_id === linkedStudentId && c.counselor_id === linkedCounselorId
+    );
+    if (existing) {
+      setSelected(existing);
+      setShowNewConvDialog(false);
+      setCreating(false);
+      return;
+    }
+
+    const { data: newConv } = await supabase
+      .from("conversations")
+      .insert({
+        student_id: linkedStudentId,
+        counselor_id: linkedCounselorId,
+        parent_id: userId,
+        status: "active",
+      })
+      .select()
+      .single();
+
+    if (newConv) {
+      setConversations((prev) => [newConv, ...prev]);
+      setSelected(newConv);
+      setMessages((prev) => ({ ...prev, [newConv.id]: [] }));
+    }
+
+    setShowNewConvDialog(false);
+    setCreating(false);
+  };
+
   // ── Derived ────────────────────────────────────────────────────
   const totalUnread = Object.values(messages)
     .flat()
@@ -244,20 +315,50 @@ const ParentMessages = () => {
   // ── Render ─────────────────────────────────────────────────────
   return (
     <div className="p-6 space-y-6">
+      {/* New Conversation Dialog */}
+      <Dialog open={showNewConvDialog} onOpenChange={setShowNewConvDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Message your child's counselor</DialogTitle>
+            <DialogDescription>
+              {linkedCounselorName
+                ? `This will start a conversation with ${linkedCounselorName}, your child's assigned counselor.`
+                : "No counselor is assigned to your child yet. Please contact the school to get a counselor assigned."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewConvDialog(false)}>Cancel</Button>
+            {linkedCounselorId && (
+              <Button onClick={createConversation} disabled={creating}>
+                {creating ? "Starting…" : "Start Conversation"}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Messages</h1>
           <p className="text-muted-foreground">Stay in touch with your child's counselor</p>
         </div>
-        {totalUnread > 0 && (
-          <div className="flex items-center gap-2 bg-primary/10 text-primary border border-primary/20 rounded-lg px-4 py-2">
-            <AlertCircle className="h-4 w-4" />
-            <span className="text-sm font-medium">
-              {totalUnread} unread message{totalUnread > 1 ? "s" : ""}
-            </span>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {totalUnread > 0 && (
+            <div className="flex items-center gap-2 bg-primary/10 text-primary border border-primary/20 rounded-lg px-4 py-2">
+              <AlertCircle className="h-4 w-4" />
+              <span className="text-sm font-medium">
+                {totalUnread} unread message{totalUnread > 1 ? "s" : ""}
+              </span>
+            </div>
+          )}
+          {linkedCounselorId && (
+            <Button onClick={() => setShowNewConvDialog(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Message Counselor
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Main Layout */}
@@ -286,10 +387,18 @@ const ParentMessages = () => {
             ) : filteredConversations.length === 0 ? (
               <div className="p-6 text-center">
                 <MessageSquare className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No conversations yet</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Your child's counselor will start a conversation with you here.
+                <p className="text-sm text-muted-foreground font-medium">No conversations yet</p>
+                <p className="text-xs text-muted-foreground mt-1 mb-4">
+                  {linkedCounselorId
+                    ? "Start a conversation with your child's counselor."
+                    : "Your child's counselor will start a conversation with you here."}
                 </p>
+                {linkedCounselorId && (
+                  <Button size="sm" variant="outline" onClick={() => setShowNewConvDialog(true)} className="gap-1.5">
+                    <Plus className="h-3.5 w-3.5" />
+                    Message Counselor
+                  </Button>
+                )}
               </div>
             ) : (
               filteredConversations.map((conv) => {
