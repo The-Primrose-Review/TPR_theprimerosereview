@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { GraduationCap, Users, FileText, Calendar, BarChart3, MessageSquare, Bell, UserCircle, Award, Home, PartyPopper, Settings, Building2, ShieldAlert, Star, Zap, FlaskConical, Eye, ArrowLeft, Trophy, Calculator, ChevronDown, ChevronRight, Sparkles, LogOut, Mic } from "lucide-react";
+import { GraduationCap, Users, FileText, Calendar, BarChart3, MessageSquare, Bell, UserCircle, Award, Home, PartyPopper, Settings, Building2, ShieldAlert, Star, Zap, FlaskConical, Eye, ArrowLeft, Trophy, Calculator, ChevronDown, ChevronRight, Sparkles, LogOut, Wrench } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton, useSidebar } from "@/components/ui/sidebar";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,6 +45,10 @@ const mainItems: NavItem[] = [{
   title: "Notifications",
   url: "/notifications",
   icon: Bell
+}, {
+  title: "Essay Toolkit",
+  url: "/essay-toolkit",
+  icon: Wrench,
 }, {
   title: "Student Experience",
   url: "/preview/student-dashboard",
