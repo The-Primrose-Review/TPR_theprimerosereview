@@ -18,6 +18,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
   ArrowLeft,
   GraduationCap,
   Calendar,
@@ -30,7 +43,10 @@ import {
   School,
   ClipboardList,
   Globe,
+  ChevronsUpDown,
+  Check,
 } from "lucide-react";
+import { backgroundStep } from "@/data/steps/background";
 
 const APPLICATION_PLATFORMS = [
   { value: "common-app",   label: "Common App",              description: "Used by 900+ colleges (default)" },
@@ -62,6 +78,10 @@ const STATUS_OPTIONS = [
 const CURRENT_YEAR = new Date().getFullYear();
 const GRAD_YEARS = [CURRENT_YEAR, CURRENT_YEAR + 1, CURRENT_YEAR + 2];
 
+const COLLEGE_LIST: string[] = (
+  backgroundStep.questions[0].subQuestions[0].options as string[]
+);
+
 const AddApplication = () => {
   const isPreviewMode = usePreviewMode();
   const navigate = useNavigate();
@@ -70,6 +90,7 @@ const AddApplication = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [schoolOpen, setSchoolOpen] = useState(false);
 
   const [form, setForm] = useState({
     school_name: "",
@@ -227,16 +248,49 @@ const AddApplication = () => {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="school_name">
+                <Label>
                   School Name <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  id="school_name"
-                  placeholder="Harvard University"
-                  value={form.school_name}
-                  onChange={(e) => updateForm("school_name", e.target.value)}
-                  required
-                />
+                <Popover open={schoolOpen} onOpenChange={setSchoolOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={schoolOpen}
+                      className="w-full justify-between font-normal"
+                    >
+                      <span className={form.school_name ? "text-foreground" : "text-muted-foreground"}>
+                        {form.school_name || "Search for a school..."}
+                      </span>
+                      <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Type to search..." />
+                      <CommandList>
+                        <CommandEmpty>No school found. Type to add a custom name.</CommandEmpty>
+                        <CommandGroup>
+                          {COLLEGE_LIST.map((college) => (
+                            <CommandItem
+                              key={college}
+                              value={college}
+                              onSelect={(val) => {
+                                updateForm("school_name", val === form.school_name ? "" : val);
+                                setSchoolOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={`mr-2 h-4 w-4 ${form.school_name === college ? "opacity-100" : "opacity-0"}`}
+                              />
+                              {college}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="program">

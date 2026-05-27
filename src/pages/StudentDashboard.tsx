@@ -460,8 +460,21 @@ const StudentDashboard = () => {
 
       {/* Progress Overview */}
       <div id="tour-progress" className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="flex items-center justify-center">
+          <CardContent className="p-6 w-full">
+            <Button
+              id="tour-add-application"
+              variant="outline"
+              className="h-16 w-full flex-col gap-2 border-primary/30 hover:bg-primary/5"
+              onClick={() => navigate('/add-application')}
+            >
+              <FileText className="h-5 w-5" />
+              Add Application
+            </Button>
+          </CardContent>
+        </Card>
         {[
-          { label: 'Applications', icon: Calendar, data: data?.applications },
+          // { label: 'Applications', icon: Calendar, data: data?.applications },
           { label: 'Essays', icon: FileText, data: data?.essays },
           { label: 'Recommendations', icon: Star, data: data?.recommendations },
         ].map(({ label, icon: Icon, data: d }) => {
@@ -601,7 +614,7 @@ const StudentDashboard = () => {
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <Button
               id="tour-upload-essay"
               variant="outline"
@@ -611,23 +624,23 @@ const StudentDashboard = () => {
               <Upload className="h-5 w-5" />
               Upload Essay
             </Button>
-            <Button
+            {/* <Button
               variant="outline"
               className="h-16 flex-col gap-2 border-primary/30 hover:bg-primary/5"
               onClick={() => navigate('/personal-essay')}
             >
               <Sparkles className="h-5 w-5 text-primary" />
               Personal Essay
-            </Button>
-            <Button variant="outline" className="h-16 flex-col gap-2" onClick={() => navigate('/student-personal-area')}>
+            </Button> */}
+            {/* <Button variant="outline" className="h-16 flex-col gap-2" onClick={() => navigate('/student-personal-area')}>
               <FileText className="h-5 w-5" />
               View Feedback
-            </Button>
+            </Button> */}
             <Button variant="outline" className="h-16 flex-col gap-2" onClick={() => navigate('/student-messages')}>
               <MessageSquare className="h-5 w-5" />
               Message Counselor
             </Button>
-            <Button
+            {/* <Button
               id="tour-rec-letters"
               variant="outline"
               className="h-16 flex-col gap-2 border-primary/30 hover:bg-primary/5"
@@ -635,8 +648,8 @@ const StudentDashboard = () => {
             >
               <Award className="h-5 w-5 text-primary" />
               Rec Letters
-            </Button>
-            <Button
+            </Button> */}
+            {/* <Button
               id="tour-add-application"
               variant="outline"
               className="h-16 flex-col gap-2 border-primary/30 hover:bg-primary/5"
@@ -644,7 +657,7 @@ const StudentDashboard = () => {
             >
               <FileText className="h-5 w-5" />
               Add Application
-            </Button>
+            </Button> */}
           </div>
         </CardContent>
       </Card>
