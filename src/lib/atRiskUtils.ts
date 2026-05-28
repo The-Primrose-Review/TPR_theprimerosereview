@@ -27,7 +27,8 @@ export function classifyRisk(
   hasUrgentDeadline: boolean,
   criteria: AtRiskCriteria,
 ): "at-risk" | "needs-attention" | "on-track" {
+  if (hasUrgentDeadline) return "at-risk";
   if (score >= criteria.needsAttentionThreshold) return "on-track";
-  if (hasUrgentDeadline && score < criteria.atRiskThreshold) return "at-risk";
+  if (score < criteria.atRiskThreshold) return "at-risk";
   return "needs-attention";
 }

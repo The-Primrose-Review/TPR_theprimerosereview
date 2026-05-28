@@ -49,7 +49,9 @@ export const EssaysPanel = ({
   const handleEditDraft = (slot: ApplicationEssaySlotWithDraft) => {
     if (!slot.essay_feedback_id) return;
     onClose();
-    navigate(`/edit-essay?id=${slot.essay_feedback_id}&slotId=${slot.id}`);
+    navigate(
+      `/submit-essay?draftId=${slot.essay_feedback_id}&slotId=${slot.id}&applicationId=${application.id}&label=${encodeURIComponent(slot.essay_label)}&schoolName=${encodeURIComponent(application.school_name)}${slot.essay_prompt ? `&prompt=${encodeURIComponent(slot.essay_prompt)}` : ""}${slot.word_limit ? `&wordLimit=${slot.word_limit}` : ""}`
+    );
   };
 
   return (

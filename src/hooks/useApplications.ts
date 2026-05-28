@@ -105,11 +105,34 @@ export const useApplications = () => {
 
       if (profileError) throw profileError;
 
-      return appsData.map((app) => ({
-        ...app,
-        profiles:
-          profilesData?.find((p) => p.user_id === app.student_id) ?? null,
-      }));
+      // ── Live completion from essay slots ────
+      const appIds = appsData.map((a) => a.id);
+      const { data: slotsData } = appIds.length > 0
+        ? await supabase
+            .from("application_essays")
+            .select("application_id, status")
+            .in("application_id", appIds)
+        : { data: [] as { application_id: string; status: string }[] };
+
+      const slotsByApp = new Map<string, { total: number; submitted: number }>();
+      for (const slot of slotsData ?? []) {
+        const entry = slotsByApp.get(slot.application_id) ?? { total: 0, submitted: 0 };
+        entry.total++;
+        if (["in_review", "approved"].includes(slot.status)) entry.submitted++;
+        slotsByApp.set(slot.application_id, entry);
+      }
+
+      return appsData.map((app) => {
+        const slots = slotsByApp.get(app.id) ?? { total: 0, submitted: 0 };
+        const liveCompletion = slots.total > 0
+          ? Math.round((slots.submitted / slots.total) * 100)
+          : 0;
+        return {
+          ...app,
+          completion_percentage: liveCompletion,
+          profiles: profilesData?.find((p) => p.user_id === app.student_id) ?? null,
+        };
+      });
     },
   });
 

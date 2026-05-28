@@ -92,7 +92,7 @@ const getStatusIcon = (status: string) => {
 const getRiskReasons = (student: Student, criteria: AtRiskCriteria): string[] => {
   const reasons: string[] = []
   if (student.hasNearDeadline)
-    reasons.push('Deadline within the next 30 days')
+    reasons.push('Application deadline within 14 days')
   if (criteria.triggerNoEssays && student.essaysSubmitted === 0 && student.totalEssays > 0)
     reasons.push(`No essays submitted (0/${student.totalEssays})`)
   if (criteria.triggerLowCompletion && student.completionPercentage < criteria.atRiskThreshold)
@@ -212,13 +212,24 @@ const Students = () => {
 
       if (spError) throw spError
 
-      // Fetch essays
-      const { data: essays, error: essayError } = await supabase
-        .from('essay_feedback')
-        .select('student_id, status')
+      // Fetch applications (needed for deadlines + as parent IDs for essay slots)
+      const { data: applications, error: appsError } = await supabase
+        .from('applications')
+        .select('id, student_id, deadline_date, status')
         .in('student_id', studentIds)
 
-      if (essayError) throw essayError
+      if (appsError) throw appsError
+
+      // Fetch essay slots for all those applications
+      const appIds = (applications ?? []).map(a => a.id)
+      const { data: essaySlots, error: slotError } = appIds.length > 0
+        ? await supabase
+            .from('application_essays')
+            .select('application_id, status')
+            .in('application_id', appIds)
+        : { data: [] as { application_id: string; status: string }[], error: null }
+
+      if (slotError) throw slotError
 
       // Fetch recommendations
       const { data: recs, error: recError } = await supabase
@@ -266,9 +277,15 @@ const Students = () => {
         const profile = profiles.find(p => p.user_id === studentId)
         const sp = studentProfiles.find(s => s.user_id === studentId)
 
-        const studentEssays = essays.filter(e => e.student_id === studentId)
-        const totalEssays = studentEssays.length
-        const essaysSubmitted = studentEssays.filter(e => e.status === 'sent').length
+        // Essay slots across all of this student's applications
+        const studentAppIds = (applications ?? [])
+          .filter(a => a.student_id === studentId)
+          .map(a => a.id)
+        const studentSlots = (essaySlots ?? []).filter(s => studentAppIds.includes(s.application_id))
+        const totalEssays = studentSlots.length
+        const essaysSubmitted = studentSlots.filter(s =>
+          ['in_review', 'approved'].includes(s.status)
+        ).length
 
         const studentRecs = recs.filter(r => r.student_id === studentId)
         const recommendationsRequested = studentRecs.length
@@ -276,16 +293,23 @@ const Students = () => {
 
         const completion = computeCompletion(essaysSubmitted, totalEssays, recommendationsSubmitted, recommendationsRequested, criteria)
 
-        // upcoming deadlines = incomplete tasks with a due date in the future
         const studentTasks = tasks.filter(t => t.student_id === studentId)
         const now = new Date()
-        const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-        const upcomingDeadlines = studentTasks.filter(t =>
-          !t.completed && t.due_date && new Date(t.due_date) > now
+        const fourteenDaysFromNow = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+
+        // Upcoming deadlines = unsubmitted applications with deadline within 14 days
+        const upcomingDeadlines = (applications ?? []).filter(a =>
+          a.student_id === studentId &&
+          a.status !== 'sent' &&
+          a.deadline_date &&
+          new Date(a.deadline_date) >= now &&
+          new Date(a.deadline_date) <= fourteenDaysFromNow
         ).length
-        const hasNearDeadline = studentTasks.some(t =>
-          !t.completed && t.due_date &&
-          new Date(t.due_date) >= now && new Date(t.due_date) <= thirtyDaysFromNow
+        const hasNearDeadline = (applications ?? []).some(a =>
+          a.student_id === studentId &&
+          a.status !== 'sent' &&
+          a.deadline_date &&
+          new Date(a.deadline_date) <= fourteenDaysFromNow
         )
 
         return {

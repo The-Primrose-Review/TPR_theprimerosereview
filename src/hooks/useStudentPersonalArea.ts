@@ -51,6 +51,7 @@ export interface EssayFeedback {
   essay_title: string;
   essay_content: string;
   essay_prompt: string | null;
+  target_school: string | null;
   ai_analysis: AnalysisResult | null;
   feedback_items: FeedbackItem[];
   personal_message: string | null;
@@ -90,6 +91,7 @@ export const useStudentPersonalArea = () => {
         essay_title: row.essay_title,
         essay_content: row.essay_content,
         essay_prompt: row.essay_prompt,
+        target_school: (row as any).target_school ?? null,
         ai_analysis: row.ai_analysis as unknown as AnalysisResult | null,
         feedback_items: (row.feedback_items as unknown as FeedbackItem[]) ?? [],
         personal_message: row.personal_message,
@@ -126,6 +128,7 @@ export const useStudentPersonalArea = () => {
         essay_title: row.essay_title,
         essay_content: row.essay_content,
         essay_prompt: row.essay_prompt,
+        target_school: (row as any).target_school ?? null,
         ai_analysis: row.ai_analysis as unknown as AnalysisResult | null,
         feedback_items: (row.feedback_items as unknown as FeedbackItem[]) ?? [],
         personal_message: row.personal_message,

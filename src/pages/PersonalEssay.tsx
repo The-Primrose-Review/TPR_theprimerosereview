@@ -67,7 +67,7 @@ const PersonalEssay = () => {
 
   useEffect(() => {
     const fetchCounselorAndTeachers = async () => {
-      const { data: anyRole } = await supabase.rpc("get_any_counselor_id");
+      const { data: anyRole } = await supabase.rpc("get_my_counselor_id");
       if (anyRole) setCounselorId(anyRole);
 
       const { data: { user } } = await supabase.auth.getUser();
@@ -220,13 +220,12 @@ const PersonalEssay = () => {
           .eq("id", currentDraftId) as any);
         if (error) throw error;
       } else {
-        const { data: draft, error } = await (supabase
+        const newId = crypto.randomUUID();
+        const { error } = await (supabase
           .from("essay_feedback")
-          .insert(payload as any)
-          .select("id")
-          .single() as any);
+          .insert({ id: newId, ...payload } as any) as any);
         if (error) throw error;
-        setCurrentDraftId(draft.id);
+        setCurrentDraftId(newId);
       }
 
       toast.success("Draft saved! Continue anytime from My Work → Essays.");
@@ -271,20 +270,20 @@ const PersonalEssay = () => {
           .eq("id", currentDraftId) as any);
         if (error) throw error;
       } else {
-        const { data: essayData, error } = await supabase
+        const newId = crypto.randomUUID();
+        const { error } = await (supabase
           .from("essay_feedback")
           .insert({
+            id:            newId,
             student_id:    user.id,
             counselor_id:  recipient === 'teacher' ? null : counselorId,
             essay_title:   title.trim(),
             essay_prompt:  prompt.trim() || null,
             essay_content: content.trim(),
             status:        "pending",
-          })
-          .select()
-          .single();
+          } as any) as any);
         if (error) throw error;
-        essayId = essayData?.id ?? null;
+        essayId = newId;
       }
 
       if ((recipient === 'teacher' || recipient === 'both') && selectedTeacherId && essayId) {

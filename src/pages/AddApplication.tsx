@@ -157,7 +157,7 @@ const AddApplication = () => {
         completed_essays: form.completed_essays,
         recommendations_requested: form.recommendations_requested,
         recommendations_submitted: form.recommendations_submitted,
-        completion_percentage: computeCompletion(),
+        completion_percentage: 0,
         urgent: isUrgent(),
         ai_score_avg: null,
         notes: form.notes || null,

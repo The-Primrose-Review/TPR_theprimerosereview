@@ -61,12 +61,38 @@ export const useParentPortalData = () => {
     queryKey: ["parent-applications", studentId],
     enabled: !!studentId,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data: appList } = await supabase
         .from("applications")
         .select("*")
         .eq("student_id", studentId!)
         .order("deadline_date", { ascending: true });
-      return data ?? [];
+
+      const apps = appList ?? [];
+      const appIds = apps.map((a) => a.id);
+      if (appIds.length === 0) return apps;
+
+      const { data: slotsData } = await supabase
+        .from("application_essays")
+        .select("application_id, status")
+        .in("application_id", appIds);
+
+      const slotsByApp = new Map<string, { total: number; submitted: number }>();
+      for (const slot of slotsData ?? []) {
+        const entry = slotsByApp.get(slot.application_id) ?? { total: 0, submitted: 0 };
+        entry.total++;
+        if (["in_review", "approved"].includes(slot.status)) entry.submitted++;
+        slotsByApp.set(slot.application_id, entry);
+      }
+
+      return apps.map((app) => {
+        const slots = slotsByApp.get(app.id) ?? { total: 0, submitted: 0 };
+        return {
+          ...app,
+          completion_percentage: slots.total > 0
+            ? Math.round((slots.submitted / slots.total) * 100)
+            : 0,
+        };
+      });
     },
   });
 

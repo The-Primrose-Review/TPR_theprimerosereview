@@ -56,7 +56,7 @@ export const useIndexDashboard = () => {
       if (studentIds.length === 0) return [];
 
       // Fetch all data in parallel
-      const [profilesRes, studentProfilesRes, essaysRes, recsRes, tasksRes] =
+      const [profilesRes, studentProfilesRes, essaySlotsRes, recsRes, applicationsRes] =
         await Promise.all([
           supabase
             .from("profiles")
@@ -68,10 +68,11 @@ export const useIndexDashboard = () => {
             .select("user_id, gpa, sat_score")
             .in("user_id", studentIds),
 
-          supabase
-            .from("essay_feedback")
-            .select("student_id, status, updated_at")
-            .in("student_id", studentIds),
+          // application_essays joined through applications to scope by student
+          (supabase
+            .from("application_essays")
+            .select("id, status, updated_at, applications!inner(student_id)") as any)
+            .in("applications.student_id", studentIds),
 
           supabase
             .from("recommendation_requests")
@@ -79,8 +80,8 @@ export const useIndexDashboard = () => {
             .in("student_id", studentIds),
 
           supabase
-            .from("tasks")
-            .select("student_id, due_date, completed")
+            .from("applications")
+            .select("student_id, deadline_date, status")
             .in("student_id", studentIds),
         ]);
 
@@ -91,40 +92,45 @@ export const useIndexDashboard = () => {
         (studentProfilesRes.data ?? []).map((p) => [p.user_id, p])
       );
 
+      // Flatten essay slots: attach student_id from the nested applications join
+      const allSlots = (essaySlotsRes.data ?? []).map((row: any) => ({
+        studentId: row.applications.student_id as string,
+        status:    row.status as string,
+        updatedAt: row.updated_at as string,
+      }));
+
       const now = new Date();
-      const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
       return studentIds.map((id): DashboardStudent => {
         const profile = profileMap.get(id);
         const sp = studentProfileMap.get(id);
-        const essays = (essaysRes.data ?? []).filter((e) => e.student_id === id);
+        const slots = allSlots.filter((s: { studentId: string; status: string; updatedAt: string }) => s.studentId === id);
         const recs = (recsRes.data ?? []).filter((r) => r.student_id === id);
-        const studentTasks = (tasksRes.data ?? []).filter((t) => t.student_id === id);
+        const studentApps = (applicationsRes.data ?? []).filter((a) => a.student_id === id);
 
-        const totalEssays = essays.length;
-        const essaysSubmitted = essays.filter((e) =>
-          ["sent", "read", "approved"].includes(e.status)
+        const totalEssays = slots.length;
+        const essaysSubmitted = slots.filter((s: { status: string }) =>
+          ["in_review", "approved"].includes(s.status)
         ).length;
         const recsRequested = recs.length;
         const recsSubmitted = recs.filter((r) => r.status === "sent").length;
 
         const completionPercentage = computeCompletion(essaysSubmitted, totalEssays, recsSubmitted, recsRequested, criteria);
 
-        // Near deadline = any incomplete task due within 30 days
-        const hasNearDeadline = studentTasks.some(
-          (t) =>
-            !t.completed &&
-            t.due_date &&
-            new Date(t.due_date) >= now &&
-            new Date(t.due_date) <= thirtyDaysFromNow
+        const fourteenDaysFromNow = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+        const hasNearDeadline = studentApps.some(
+          (a) =>
+            a.status !== "sent" &&
+            a.deadline_date &&
+            new Date(a.deadline_date) <= fourteenDaysFromNow
         );
 
         const status = classifyRisk(completionPercentage, hasNearDeadline, criteria) as DashboardStudent["status"];
 
-        // Last activity = most recent essay updated_at
-        const lastEssayUpdate = essays
-          .map((e) => new Date(e.updated_at).getTime())
-          .sort((a, b) => b - a)[0];
+        // Last activity = most recent essay slot updated_at
+        const lastEssayUpdate = slots
+          .map((s: { updatedAt: string }) => new Date(s.updatedAt).getTime())
+          .sort((a: number, b: number) => b - a)[0];
 
         const lastActivity = lastEssayUpdate
           ? formatRelativeTime(lastEssayUpdate)
@@ -138,7 +144,9 @@ export const useIndexDashboard = () => {
           completionPercentage,
           essaysSubmitted,
           totalEssays,
-          upcomingDeadlines: 0, // will populate when applications are built
+          upcomingDeadlines: studentApps.filter(
+            (a) => a.status !== "sent" && a.deadline_date && new Date(a.deadline_date) <= fourteenDaysFromNow
+          ).length,
           status,
           lastActivity,
         };

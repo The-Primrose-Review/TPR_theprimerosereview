@@ -95,18 +95,18 @@ useEffect(() => {
   } else if (roleParam === 'teacher' && inviteCodeParam) {
     setSelectedRole('teacher');
     (async () => {
-      const { data: schoolName } = await supabase.rpc('get_school_name_by_invite', {
+      const { data: resolvedSchoolName } = await (supabase as any).rpc('get_school_name_by_invite', {
         invite_code_param: inviteCodeParam,
       });
-      if (schoolName) setInviteSchoolName(schoolName);
+      if (resolvedSchoolName) setInviteSchoolName(resolvedSchoolName);
     })();
   } else if (inviteCodeParam) {
     setSelectedRole('student');
     (async () => {
-      const { data: schoolName } = await supabase.rpc('get_school_name_by_invite', {
+      const { data: resolvedSchoolName } = await (supabase as any).rpc('get_school_name_by_invite', {
         invite_code_param: inviteCodeParam,
       });
-      if (schoolName) setInviteSchoolName(schoolName);
+      if (resolvedSchoolName) setInviteSchoolName(resolvedSchoolName);
     })();
   }
 }, [inviteCodeParam, roleParam]);

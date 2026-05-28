@@ -4,16 +4,6 @@ import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar, GraduationCap } from "lucide-react";
 import type { ApplicationWithProfile } from "@/hooks/useApplications";
 
-const getAppStatusColor = (status: string) => {
-  switch (status) {
-    case "sent":        return "bg-green-500 text-white";
-    case "approved":    return "bg-green-500 text-white";
-    case "in_progress": return "bg-yellow-500 text-white";
-    case "draft":       return "bg-blue-500 text-white";
-    default:            return "bg-gray-400 text-white";
-  }
-};
-
 const getDaysUntil = (dateStr: string) =>
   Math.ceil((new Date(dateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 
@@ -25,15 +15,37 @@ interface ApplicationHeaderProps {
   notStartedSlots: number;
   draftSlots: number;
   inReviewSlots: number;
+  sentRecs: number;
+  totalRecs: number;
 }
 
 export const ApplicationHeader = ({
   application, completionPercentage,
   totalSlots, approvedSlots, notStartedSlots, draftSlots, inReviewSlots,
+  sentRecs, totalRecs,
 }: ApplicationHeaderProps) => {
   const daysLeft = getDaysUntil(application.deadline_date);
   const isUrgent = daysLeft <= 14;
   const isPast   = daysLeft < 0;
+
+  const hasEssayActivity  = draftSlots > 0 || inReviewSlots > 0 || approvedSlots > 0;
+  const allEssaysDone     = totalSlots > 0 && approvedSlots === totalSlots;
+  const allRecsDone       = totalRecs === 0 || sentRecs === totalRecs;
+  const everythingDone    = allEssaysDone && allRecsDone && totalSlots > 0;
+
+  const badgeLabel = application.status === "sent"
+    ? "Submitted"
+    : everythingDone
+      ? "Ready to Submit"
+      : (hasEssayActivity || sentRecs > 0)
+        ? "In Progress"
+        : "Not Started";
+
+  const badgeColor = application.status === "sent" || everythingDone
+    ? "bg-green-500 text-white"
+    : (hasEssayActivity || sentRecs > 0)
+      ? "bg-yellow-500 text-white"
+      : "bg-gray-400 text-white";
 
   return (
     <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
@@ -47,8 +59,8 @@ export const ApplicationHeader = ({
             <p className="text-sm text-muted-foreground mt-0.5">{application.program}</p>
           )}
           <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <Badge className={getAppStatusColor(application.status)}>
-              {application.status.replace(/_/g, " ")}
+            <Badge className={badgeColor}>
+              {badgeLabel}
             </Badge>
             {application.urgent && (
               <Badge className="bg-orange-100 text-orange-700 border-orange-200">⚠ Urgent</Badge>

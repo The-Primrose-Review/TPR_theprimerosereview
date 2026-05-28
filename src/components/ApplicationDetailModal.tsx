@@ -68,6 +68,8 @@ export const ApplicationDetailModal = ({
           notStartedSlots={notStartedSlots}
           draftSlots={draftSlots}
           inReviewSlots={inReviewSlots}
+          sentRecs={sentCount}
+          totalRecs={totalCount}
         />
 
         <ScrollArea className="flex-1 overflow-auto">

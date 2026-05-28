@@ -15,7 +15,9 @@ interface SlotCardProps {
 export const SlotCard = ({ slot, onStartWriting, onEditDraft, onDelete, isDeleting }: SlotCardProps) => {
   const draft        = slot.essay_feedback;
   const hasDraft     = !!slot.essay_feedback_id;
-  const feedbackSent = draft?.status === "sent";
+  const isDraft      = draft?.status === "draft";
+  const isPending    = draft?.status === "pending" || draft?.status === "in_review";
+  const feedbackSent = draft?.status === "sent" || draft?.status === "read";
 
   return (
     <div className="group relative border border-border rounded-xl p-4 bg-card hover:shadow-sm transition-all">
@@ -49,7 +51,7 @@ export const SlotCard = ({ slot, onStartWriting, onEditDraft, onDelete, isDeleti
         <p className="text-xs text-muted-foreground line-clamp-2 mb-2 pl-9">{slot.essay_prompt}</p>
       )}
 
-      {hasDraft && draft && !feedbackSent && (
+      {hasDraft && draft && isDraft && (
         <div className="pl-9 mb-2">
           <div className="bg-muted/60 rounded-lg p-2.5 text-xs">
             <p className="font-medium truncate mb-0.5">{draft.essay_title}</p>
@@ -60,8 +62,17 @@ export const SlotCard = ({ slot, onStartWriting, onEditDraft, onDelete, isDeleti
             </div>
           </div>
           <Button size="sm" variant="outline" className="h-7 text-xs mt-2" onClick={() => onEditDraft(slot)}>
-            <PenLine className="h-3 w-3 mr-1.5" />Edit Draft
+            <PenLine className="h-3 w-3 mr-1.5" />Continue Writing
           </Button>
+        </div>
+      )}
+
+      {hasDraft && draft && isPending && (
+        <div className="pl-9 mb-2">
+          <div className="bg-blue-50 border border-blue-100 rounded-lg p-2.5 text-xs">
+            <p className="font-medium truncate mb-0.5">{draft.essay_title}</p>
+            <p className="text-blue-600/80 mt-1">Submitted — awaiting feedback</p>
+          </div>
         </div>
       )}
 

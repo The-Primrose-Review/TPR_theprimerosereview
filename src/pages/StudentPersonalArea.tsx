@@ -102,24 +102,27 @@ const StudentPersonalArea = () => {
 
   // Live slot counts per application — avoids relying on stale DB columns
   // that a trigger overwrites whenever slots are added/removed.
-  const [slotCounts, setSlotCounts] = useState<Record<string, { completed: number; total: number }>>({});
+  const [slotCounts, setSlotCounts] = useState<Record<string, { total: number; draft: number; inReview: number; approved: number }>>({});
+
+  const buildSlotCounts = (data: { application_id: string; status: string }[]) => {
+    const counts: Record<string, { total: number; draft: number; inReview: number; approved: number }> = {};
+    for (const row of data) {
+      if (!counts[row.application_id]) counts[row.application_id] = { total: 0, draft: 0, inReview: 0, approved: 0 };
+      counts[row.application_id].total++;
+      if (row.status === "draft")     counts[row.application_id].draft++;
+      if (row.status === "in_review") counts[row.application_id].inReview++;
+      if (row.status === "approved")  counts[row.application_id].approved++;
+    }
+    return counts;
+  };
 
   useEffect(() => {
     if (applications.length === 0) return;
-    const appIds = applications.map(a => a.id);
     supabase
       .from("application_essays")
       .select("application_id, status")
-      .in("application_id", appIds)
-      .then(({ data }) => {
-        const counts: Record<string, { completed: number; total: number }> = {};
-        for (const row of data ?? []) {
-          if (!counts[row.application_id]) counts[row.application_id] = { completed: 0, total: 0 };
-          counts[row.application_id].total++;
-          if (["approved", "in_review"].includes(row.status)) counts[row.application_id].completed++;
-        }
-        setSlotCounts(counts);
-      });
+      .in("application_id", applications.map(a => a.id))
+      .then(({ data }) => setSlotCounts(buildSlotCounts(data ?? [])));
   }, [applications]);
 
   const essayFeedback = selectedEssay
@@ -315,7 +318,9 @@ const StudentPersonalArea = () => {
                           variant="outline"
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/submit-essay?draftId=${essay.id}`);
+                            navigate(essay.target_school
+                              ? `/submit-essay?draftId=${essay.id}`
+                              : `/personal-essay?draftId=${essay.id}`);
                           }}
                         >
                           Continue Writing
@@ -527,7 +532,7 @@ const StudentPersonalArea = () => {
                             Deadline: {new Date(app.deadline_date).toLocaleDateString()}
                           </span>
                           <span>
-                            Essays: {slotCounts[app.id]?.completed ?? 0}/{app.required_essays}
+                            Essays: {slotCounts[app.id]?.approved ?? 0}/{slotCounts[app.id]?.total ?? 0} approved
                           </span>
                           <span>
                             Recs: {app.recommendations_submitted}/{app.recommendations_requested}
@@ -535,13 +540,26 @@ const StudentPersonalArea = () => {
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2">
-                        <Badge className={getStatusColor(app.status)}>
-                          {getStatusIcon(app.status)}
-                          <span className="ml-1 capitalize">{getStatusLabel(app.status)}</span>
+                        <Badge className={(() => {
+                          if (app.status === "sent") return "bg-green-500 text-white";
+                          const c = slotCounts[app.id];
+                          if (!c || c.total === 0) return "bg-gray-500 text-white";
+                          if (c.inReview > 0 || c.approved > 0) return "bg-yellow-500 text-white";
+                          if (c.draft > 0) return "bg-blue-500 text-white";
+                          return "bg-gray-500 text-white";
+                        })()}>
+                          {(() => {
+                            if (app.status === "sent") return "Submitted";
+                            const c = slotCounts[app.id];
+                            if (!c || c.total === 0) return "Not Started";
+                            if (c.inReview > 0 || c.approved > 0) return "In Progress";
+                            if (c.draft > 0) return "In Draft";
+                            return "Not Started";
+                          })()}
                         </Badge>
                         <span className="text-sm font-medium text-primary">
-                          {app.required_essays > 0
-                            ? Math.round(((slotCounts[app.id]?.completed ?? 0) / app.required_essays) * 100)
+                          {slotCounts[app.id]?.total
+                            ? Math.round((slotCounts[app.id].approved / slotCounts[app.id].total) * 100)
                             : 0}% complete
                         </span>
                         {app.urgent && (
@@ -552,8 +570,8 @@ const StudentPersonalArea = () => {
                       </div>
                     </div>
                     <Progress
-                      value={app.required_essays > 0
-                        ? Math.round(((slotCounts[app.id]?.completed ?? 0) / app.required_essays) * 100)
+                      value={slotCounts[app.id]?.total
+                        ? Math.round((slotCounts[app.id].approved / slotCounts[app.id].total) * 100)
                         : 0}
                       className="mt-3 h-2"
                     />
@@ -570,27 +588,18 @@ const StudentPersonalArea = () => {
     setSelectedApplication(null);
     // Re-fetch slot counts so the list updates after adding/removing slots
     if (applications.length > 0) {
-      const appIds = applications.map(a => a.id);
       supabase
         .from("application_essays")
         .select("application_id, status")
-        .in("application_id", appIds)
-        .then(({ data }) => {
-          const counts: Record<string, { completed: number; total: number }> = {};
-          for (const row of data ?? []) {
-            if (!counts[row.application_id]) counts[row.application_id] = { completed: 0, total: 0 };
-            counts[row.application_id].total++;
-            if (["approved", "in_review"].includes(row.status)) counts[row.application_id].completed++;
-          }
-          setSlotCounts(counts);
-        });
+        .in("application_id", applications.map(a => a.id))
+        .then(({ data }) => setSlotCounts(buildSlotCounts(data ?? [])));
     }
   }}
 />
       </Tabs>
 
       {/* ── Essay Detail Modal ── */}
-      <Dialog open={!!selectedEssay} onOpenChange={() => { setSelectedEssay(null); setHoveredFeedbackId(null); }}>
+      <Dialog open={!!selectedEssay} onOpenChange={() => setSelectedEssay(null)}>
         <DialogContent className="max-w-[95vw] w-[1200px] h-[88vh] p-0 flex flex-col">
           <DialogHeader className="px-6 py-4 border-b shrink-0">
             <div className="flex items-center justify-between">
