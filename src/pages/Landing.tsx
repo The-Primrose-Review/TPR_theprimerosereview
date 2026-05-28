@@ -54,7 +54,7 @@ const Landing = () => {
                 onClick={() => navigate('/auth?role=counselor')}
               >
                 <GraduationCap className="h-8 w-8" />
-                <span className="font-medium">Counselor</span>
+                <span className="font-medium">Counselorrrrr</span>
               </Button>
 
               <Button
