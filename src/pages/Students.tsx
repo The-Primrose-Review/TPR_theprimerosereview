@@ -412,7 +412,7 @@ const Students = () => {
           riskReasons: reasons,
         });
         const res = await fetch(
-          "https://fkvfngdwblbalrompzdj.supabase.co/functions/v1/send-at-risk",
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-at-risk`,
           {
             method: "POST",
             headers: {

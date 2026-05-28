@@ -26,7 +26,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 
-const SUPABASE_URL = "https://fkvfngdwblbalrompzdj.supabase.co";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const WORD_LIMIT_OPTIONS = [250, 500, 650, 750, 1000];
 
 const PersonalEssay = () => {
