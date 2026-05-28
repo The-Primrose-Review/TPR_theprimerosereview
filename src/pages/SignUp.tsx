@@ -127,7 +127,7 @@ useEffect(() => {
       case 'counselor': return 'Counselor';
       case 'student': return 'Student';
       case 'parent': return 'Parent';
-      case 'principal': return 'Admin';
+      case 'principal': return 'Principal';
       case 'teacher': return 'Teacher';
       default: return '';
     }
@@ -386,7 +386,7 @@ useEffect(() => {
           <Button
             variant="ghost"
             className="gap-2"
-            onClick={() => selectedRole ? setSelectedRole(null) : navigate('/auth')}
+            onClick={() => selectedRole ? setSelectedRole(null) : navigate('/')}
           >
             <ArrowLeft className="h-4 w-4" />
             {selectedRole ? 'Back' : 'Back to Sign In'}
@@ -410,8 +410,8 @@ useEffect(() => {
 
           {/* Step 1: Role selection */}
           {!selectedRole && (
-            <div className="grid grid-cols-3 gap-3">
-              {(['counselor', 'student', 'principal'] as const).map((role) => (
+            <div className="grid grid-cols-2 gap-3">
+              {(['counselor', 'student', 'principal', 'parent'] as const).map((role) => (
                 <button
                   key={role}
                   onClick={() => setSelectedRole(role)}
