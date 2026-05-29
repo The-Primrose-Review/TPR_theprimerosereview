@@ -241,8 +241,8 @@ const Students = () => {
 
       // Fetch target schools
       const { data: targetSchools, error: tsError } = await supabase
-        .from('target_schools')
-        .select('student_id, school_name')
+        .from('student_target_colleges')
+        .select('student_id, college')
         .in('student_id', studentIds)
 
       if (tsError) throw tsError
@@ -331,7 +331,7 @@ const Students = () => {
           recommendationsRequested,
           upcomingDeadlines,
           hasNearDeadline,
-          targetSchools: targetSchools.filter(ts => ts.student_id === studentId).map(ts => ts.school_name),
+          targetSchools: targetSchools.filter(ts => ts.student_id === studentId).map(ts => ts.college),
           extracurriculars: extracurriculars.filter(ec => ec.student_id === studentId).map(ec => ec.activity),
           tasks: studentTasks.map(t => ({ id: t.id, task: t.task, due_date: t.due_date, completed: t.completed })),
           meetingNotes: meetingNotes.filter(mn => mn.student_id === studentId).map(mn => ({
