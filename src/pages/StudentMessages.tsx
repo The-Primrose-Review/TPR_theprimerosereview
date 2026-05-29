@@ -288,11 +288,6 @@ const StudentMessages = () => {
       .single();
 
     if (!data) return;
-
-    setMessages((prev) => ({
-      ...prev,
-      [selected.id]: [...(prev[selected.id] || []), data],
-    }));
     setNewMessage("");
   };
 
