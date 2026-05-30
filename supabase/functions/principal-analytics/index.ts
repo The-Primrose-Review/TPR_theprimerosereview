@@ -68,7 +68,7 @@ serve(async (req) => {
     // Verify the caller is a principal of this school
     const { data: callerProfile } = await supabase
       .from("profiles")
-      .select("school_id, role")
+      .select("school_id")
       .eq("user_id", auth.userId)
       .single();
 

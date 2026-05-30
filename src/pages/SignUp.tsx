@@ -229,11 +229,12 @@ useEffect(() => {
           schoolId = preResolvedTeacherSchoolId;
         }
 
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ school_id: schoolId })
-          .eq('user_id', data.user.id);
-        if (profileError) throw profileError;
+        if (schoolId) {
+          await supabase
+            .from('profiles')
+            .update({ school_id: schoolId })
+            .eq('user_id', data.user.id);
+        }
 
         const { error: roleError } = await (supabase as any)
           .from('user_roles')

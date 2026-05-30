@@ -249,12 +249,6 @@ const Messages = () => {
         .insert({ conversation_id: existing.id, sender_id: userId, content: firstMessage.trim() })
         .select()
         .single();
-      if (msg) {
-        setMessages((prev) => ({
-          ...prev,
-          [existing.id]: [...(prev[existing.id] || []), msg],
-        }));
-      }
       setSelectedConversation(existing);
       setShowNewConversation(false);
       setCreating(false);
@@ -312,15 +306,6 @@ const Messages = () => {
       .single();
 
     if (!data) return;
-
-    setMessages((prev) => ({
-      ...prev,
-      [selectedConversation.id]: [
-        ...(prev[selectedConversation.id] || []),
-        data,
-      ],
-    }));
-
     setNewMessage("");
   };
 
