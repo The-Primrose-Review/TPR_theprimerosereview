@@ -92,19 +92,13 @@ const StudentDashboard = () => {
       const challenge = challenges?.[0]
       if (!challenge) return
 
-      const seenKey = `seen_challenge_${challenge.id}`
-      if (!localStorage.getItem(seenKey)) {
-        setChallengePopup(challenge)
-      }
+      setChallengePopup(challenge)
     } catch {
       // silently ignore — popup is non-critical
     }
   }
 
   const dismissChallengePopup = () => {
-    if (challengePopup) {
-      localStorage.setItem(`seen_challenge_${challengePopup.id}`, '1')
-    }
     setChallengePopup(null)
   }
 
@@ -112,15 +106,6 @@ const StudentDashboard = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-
-      // Get current student's school
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('user_id', user.id)
-        .maybeSingle()
-      const mySchoolId = profile?.school_id
-      if (!mySchoolId) return
 
       // Find closed challenges from the last 30 days
       const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString()
@@ -149,7 +134,7 @@ const StudentDashboard = () => {
 
         if (!mySub?.ai_scores) continue
 
-        // Fetch all scored submissions for this challenge
+        // Fetch all scored submissions platform-wide
         const { data: allSubs } = await supabase
           .from('challenge_submissions')
           .select('id, student_id, ai_scores')
@@ -158,25 +143,18 @@ const StudentDashboard = () => {
 
         if (!allSubs?.length) continue
 
-        // Filter to same school
-        const ids = [...new Set(allSubs.map(s => s.student_id))]
-        const { data: schoolProfiles } = await supabase
+        const sorted = allSubs.sort((a, b) => b.ai_scores.overallScore - a.ai_scores.overallScore)
+
+        const myRank = sorted.findIndex(s => s.id === mySub.id) + 1
+        const winnerSub = sorted[0]
+
+        const { data: winnerProfile } = await supabase
           .from('profiles')
-          .select('user_id, full_name, school_id')
-          .in('user_id', ids)
-          .eq('school_id', mySchoolId)
+          .select('full_name')
+          .eq('user_id', winnerSub.student_id)
+          .maybeSingle()
 
-        const schoolIds = new Set((schoolProfiles ?? []).map(p => p.user_id))
-        const schoolSubs = allSubs
-          .filter(s => schoolIds.has(s.student_id))
-          .sort((a, b) => b.ai_scores.overallScore - a.ai_scores.overallScore)
-
-        if (!schoolSubs.length) continue
-
-        const myRank = schoolSubs.findIndex(s => s.id === mySub.id) + 1
-        const winnerSub = schoolSubs[0]
-        const winnerProfile = (schoolProfiles ?? []).find(p => p.user_id === winnerSub.student_id)
-        const winnerFullName = winnerProfile?.full_name ?? 'a classmate'
+        const winnerFullName = winnerProfile?.full_name ?? 'a fellow student'
         const winnerParts = winnerFullName.trim().split(' ')
         const winnerDisplay = winnerParts.length > 1
           ? `${winnerParts[0]} ${winnerParts[winnerParts.length - 1][0]}.`
@@ -188,7 +166,7 @@ const StudentDashboard = () => {
           weekNumber: challenge.week_number,
           myScore: mySub.ai_scores.overallScore,
           myRank,
-          totalParticipants: schoolSubs.length,
+          totalParticipants: sorted.length,
           winnerName: winnerDisplay,
           winnerScore: winnerSub.ai_scores.overallScore,
           isWinner: winnerSub.id === mySub.id,
@@ -328,7 +306,7 @@ const StudentDashboard = () => {
 
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
-      {/* Weekly Challenge popup — shown once per challenge per browser */}
+      {/* Primrose Challenge popup — shown once per challenge per browser */}
       <Dialog open={!!challengePopup} onOpenChange={open => { if (!open) dismissChallengePopup() }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -341,19 +319,31 @@ const StudentDashboard = () => {
               </Badge>
             </div>
             <DialogTitle className="text-xl">{challengePopup?.title}</DialogTitle>
-            <DialogDescription className="text-sm leading-relaxed pt-1">
+            <DialogDescription className="text-sm leading-relaxed pt-1 whitespace-pre-line">
               {challengePopup?.description}
             </DialogDescription>
           </DialogHeader>
-          <div className="p-3 rounded-lg bg-violet-50 border border-violet-100 text-sm text-violet-700">
-            Theme: <span className="font-semibold">{challengePopup?.theme}</span>
+          <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
+            <p className="text-xs font-semibold text-amber-800 mb-2">Prize</p>
+            <div className="space-y-1 text-sm text-amber-700">
+              <div className="flex items-start gap-2">
+                <Trophy className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-500" />
+                <span>3 hours of admissions consulting with our senior consultants</span>
+              </div>
+              <p className="text-xs text-amber-600 font-medium pl-5">OR</p>
+              <div className="flex items-start gap-2">
+                <Trophy className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-500" />
+                <span>A family strategy session with your parents</span>
+              </div>
+            </div>
           </div>
-          <div className="flex gap-2 pt-1">
+          <p className="text-sm font-medium text-foreground">Ready to begin? Let's do this!</p>
+          <div className="flex gap-2">
             <Button
               className="flex-1 gap-2"
               onClick={() => { dismissChallengePopup(); navigate('/weekly-challenge') }}
             >
-              <Trophy className="h-4 w-4" /> Enter the Challenge
+              <Trophy className="h-4 w-4" /> Start the Challenge
             </Button>
             <Button variant="ghost" onClick={dismissChallengePopup} className="flex-1">
               Maybe Later
@@ -372,7 +362,7 @@ const StudentDashboard = () => {
                 : <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-amber-400 flex items-center justify-center shrink-0"><Trophy className="h-5 w-5 text-white" /></div>
               }
               <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs">
-                Week {resultsPopup?.weekNumber} Results
+                Challenge Results
               </Badge>
             </div>
             <DialogTitle className="text-xl">

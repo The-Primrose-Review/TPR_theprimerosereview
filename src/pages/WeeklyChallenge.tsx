@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -15,12 +16,12 @@ import {
   Medal,
   Loader2,
   Target,
-  Lightbulb,
   CheckCircle2,
   ArrowRight,
-  Users,
   Lock,
   ChevronUp,
+  Users,
+  School,
 } from "lucide-react";
 
 interface Challenge {
@@ -65,15 +66,21 @@ function formatCountdown(endsAt: string): string {
   return `${mins}m left`;
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
+function daysUntil(iso: string): number {
+  const diff = new Date(iso).getTime() - Date.now();
+  return Math.max(0, Math.ceil(diff / 86400000));
 }
 
-function rankLabel(rank: number) {
-  if (rank === 1) return { cls: "bg-yellow-500/20 text-yellow-700 border-yellow-300", icon: <Crown className="h-3.5 w-3.5" />, label: "#1" };
-  if (rank === 2) return { cls: "bg-slate-400/20 text-slate-600 border-slate-300", icon: <Medal className="h-3.5 w-3.5" />, label: "#2" };
-  if (rank === 3) return { cls: "bg-orange-400/20 text-orange-700 border-orange-300", icon: <Medal className="h-3.5 w-3.5" />, label: "#3" };
-  return { cls: "bg-muted text-muted-foreground border-border", icon: null, label: `#${rank}` };
+function totalDays(startsAt: string, endsAt: string): number {
+  return Math.ceil((new Date(endsAt).getTime() - new Date(startsAt).getTime()) / 86400000);
+}
+
+function formatDeadline(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric" });
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 const WeeklyChallenge = () => {
@@ -83,47 +90,38 @@ const WeeklyChallenge = () => {
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [mySubmission, setMySubmission] = useState<any | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [schoolCount, setSchoolCount] = useState(0);
+  const [submissionCount, setSubmissionCount] = useState(0);
+  const [participatingSchools, setParticipatingSchools] = useState(0);
   const [hookText, setHookText] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [justSubmitted, setJustSubmitted] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [mySchoolId, setMySchoolId] = useState<string | null>(null);
   const [countdown, setCountdown] = useState("");
   const [isClosed, setIsClosed] = useState(false);
 
-  // Fetch school-filtered leaderboard (only called when challenge is closed)
-  const loadLeaderboard = useCallback(async (challengeId: string, schoolId: string, userId: string | null) => {
+  const loadLeaderboard = useCallback(async (challengeId: string, userId: string | null) => {
     const { data: subs } = await supabase
       .from("challenge_submissions")
       .select("id, hook_text, ai_scores, submitted_at, student_id")
       .eq("challenge_id", challengeId)
       .not("ai_scores", "is", null);
 
-    if (!subs?.length) { setLeaderboard([]); setSchoolCount(0); return; }
+    if (!subs?.length) { setLeaderboard([]); return; }
 
-    // Fetch profiles for all submitters to filter by school
     const ids = [...new Set(subs.map(s => s.student_id))];
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("user_id, full_name, school_id")
+      .select("user_id, full_name")
       .in("user_id", ids);
 
-    const profileMap: Record<string, { name: string; school_id: string }> = {};
-    (profiles ?? []).forEach(p => {
-      profileMap[p.user_id] = { name: p.full_name ?? "Student", school_id: p.school_id };
-    });
+    const profileMap: Record<string, string> = {};
+    (profiles ?? []).forEach(p => { profileMap[p.user_id] = p.full_name ?? "Student"; });
 
-    // Filter to same school only
-    const schoolSubs = subs.filter(s => profileMap[s.student_id]?.school_id === schoolId);
-    setSchoolCount(schoolSubs.length);
-
-    const ranked: LeaderboardEntry[] = schoolSubs
+    const ranked: LeaderboardEntry[] = (subs as any[])
       .filter(s => s.ai_scores?.overallScore != null)
       .sort((a, b) => b.ai_scores.overallScore - a.ai_scores.overallScore)
       .map(s => {
-        const fullName = profileMap[s.student_id]?.name ?? "Student";
+        const fullName = profileMap[s.student_id] ?? "Student";
         const parts = fullName.trim().split(" ");
         const display = parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0];
         return {
@@ -136,23 +134,24 @@ const WeeklyChallenge = () => {
     setLeaderboard(ranked);
   }, []);
 
-  // Fetch just the count of school submissions during open challenge
-  const loadSchoolCount = useCallback(async (challengeId: string, schoolId: string) => {
+  const loadPlatformStats = useCallback(async (challengeId: string) => {
     const { data: subs } = await supabase
       .from("challenge_submissions")
       .select("student_id")
       .eq("challenge_id", challengeId);
 
-    if (!subs?.length) { setSchoolCount(0); return; }
+    if (!subs?.length) { setSubmissionCount(0); setParticipatingSchools(0); return; }
+
+    setSubmissionCount(subs.length);
 
     const ids = [...new Set(subs.map(s => s.student_id))];
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("user_id, school_id")
-      .in("user_id", ids)
-      .eq("school_id", schoolId);
+      .select("school_id")
+      .in("user_id", ids);
 
-    setSchoolCount(profiles?.length ?? 0);
+    const schools = new Set((profiles ?? []).map(p => p.school_id).filter(Boolean));
+    setParticipatingSchools(schools.size);
   }, []);
 
   useEffect(() => {
@@ -162,18 +161,6 @@ const WeeklyChallenge = () => {
         const { data: { user } } = await supabase.auth.getUser();
         const uid = user?.id ?? null;
         setCurrentUserId(uid);
-
-        // Fetch current user's school
-        let schoolId: string | null = null;
-        if (uid) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("school_id")
-            .eq("user_id", uid)
-            .maybeSingle();
-          schoolId = profile?.school_id ?? null;
-          setMySchoolId(schoolId);
-        }
 
         const { data: challenges } = await supabase
           .from("weekly_challenges")
@@ -205,13 +192,8 @@ const WeeklyChallenge = () => {
           }
         }
 
-        if (schoolId) {
-          if (closed) {
-            await loadLeaderboard(active.id, schoolId, uid);
-          } else {
-            await loadSchoolCount(active.id, schoolId);
-          }
-        }
+        await loadPlatformStats(active.id);
+        if (closed) await loadLeaderboard(active.id, uid);
       } catch (e: any) {
         toast({ title: "Failed to load challenge", description: e.message, variant: "destructive" });
       } finally {
@@ -219,9 +201,8 @@ const WeeklyChallenge = () => {
       }
     };
     init();
-  }, [loadLeaderboard, loadSchoolCount, toast]);
+  }, [loadLeaderboard, loadPlatformStats, toast]);
 
-  // Countdown ticker
   useEffect(() => {
     if (!challenge) return;
     const interval = setInterval(() => {
@@ -237,31 +218,18 @@ const WeeklyChallenge = () => {
     setSubmitting(true);
     try {
       const { error } = await supabase.functions.invoke("judge-hook-challenge", {
-        body: {
-          hookText: hookText.trim(),
-          challengeId: challenge.id,
-          challengeTheme: challenge.theme,
-        },
+        body: { hookText: hookText.trim(), challengeId: challenge.id, challengeTheme: challenge.theme },
       });
       if (error) throw error;
 
       setMySubmission({ hook_text: hookText.trim(), ai_scores: null });
-      setJustSubmitted(true);
-
-      // Refresh count
-      if (mySchoolId) await loadSchoolCount(challenge.id, mySchoolId);
-
-      toast({ title: "Hook submitted!", description: "Results will be revealed when the challenge closes." });
+      await loadPlatformStats(challenge.id);
+      toast({ title: "Your opening has been submitted!", description: "Results will be revealed when the challenge closes." });
     } catch (e: any) {
       toast({ title: "Submission failed", description: e.message, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleEditHook = () => {
-    setJustSubmitted(false);
-    setMySubmission(null);
   };
 
   if (loading) {
@@ -275,331 +243,393 @@ const WeeklyChallenge = () => {
   if (!challenge) {
     return (
       <div className="p-6 max-w-3xl mx-auto text-center space-y-4 pt-20">
-        <Trophy className="h-16 w-16 text-muted-foreground mx-auto" />
-        <h2 className="text-2xl font-bold">No Active Challenge</h2>
-        <p className="text-muted-foreground">Check back soon — a new weekly hook challenge will be posted here every Monday.</p>
-        <Button variant="outline" onClick={() => navigate("/student-dashboard")}>Back to Dashboard</Button>
+        <Trophy className="h-16 w-16 text-muted-foreground mx-auto opacity-30" />
+        <h2 className="text-3xl font-bold text-foreground">No Active Challenge</h2>
+        <p className="text-muted-foreground">Check back soon. A new Primrose Challenge will be posted here.</p>
+        <Button onClick={() => navigate("/student-dashboard")}>Back to Dashboard</Button>
       </div>
     );
   }
 
   const myRank = isClosed ? leaderboard.findIndex(e => e.student_id === currentUserId) + 1 : null;
   const winner = isClosed ? leaderboard[0] : null;
+  const daysLeft = daysUntil(challenge.ends_at);
+  const totalD = totalDays(challenge.starts_at, challenge.ends_at);
+  const timeProgress = isClosed ? 100 : Math.max(0, Math.min(100, ((totalD - daysLeft) / totalD) * 100));
+  const rankEmoji = (r: number) => r === 1 ? "🥇" : r === 2 ? "🥈" : r === 3 ? "🥉" : `#${r}`;
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+    <div className="p-6 space-y-5 max-w-4xl mx-auto">
 
-      {/* Challenge Header */}
-      <Card className="bg-gradient-to-br from-violet-50 via-white to-amber-50 border-violet-200/50">
+      {/* Main challenge card */}
+      <Card className="overflow-hidden border-violet-200/70">
+        <div className="h-1.5 bg-gradient-to-r from-violet-500 via-purple-500 to-amber-400" />
         <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row md:items-start gap-4">
-            <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-amber-400 flex items-center justify-center">
-              <Trophy className="h-7 w-7 text-white" />
-            </div>
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <Badge className="bg-violet-100 text-violet-700 border-violet-200 text-xs">Week {challenge.week_number}</Badge>
-                {isClosed
-                  ? <Badge variant="destructive" className="text-xs">Closed — Results Out</Badge>
-                  : <Badge className="bg-green-100 text-green-700 border-green-200 text-xs flex items-center gap-1"><Flame className="h-3 w-3" />Live</Badge>
-                }
+          <div className="flex items-start gap-5">
+
+            {/* Trophy badge with live pulse */}
+            <div className="shrink-0 relative">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-md shadow-amber-200">
+                <Trophy className="h-8 w-8 text-white" />
               </div>
-              <h1 className="text-2xl font-bold text-foreground">{challenge.title}</h1>
-              <p className="text-muted-foreground mt-1 leading-relaxed">{challenge.description}</p>
-              {challenge.example_prompt && !isClosed && (
-                <div className="mt-3 p-3 rounded-lg bg-violet-50 border border-violet-100">
-                  <p className="text-xs font-medium text-violet-700 flex items-center gap-1 mb-1">
-                    <Lightbulb className="h-3 w-3" /> Prompt tip
-                  </p>
-                  <p className="text-sm text-violet-600">{challenge.example_prompt}</p>
-                </div>
+              {!isClosed && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500 border-2 border-white" />
+                </span>
               )}
             </div>
-            <div className="flex flex-col items-end gap-1 shrink-0">
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Clock className="h-4 w-4" />
-                <span className="font-medium">{countdown}</span>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                {isClosed ? (
+                  <Badge variant="destructive">Closed</Badge>
+                ) : (
+                  <Badge className="bg-green-100 text-green-700 border-green-200 gap-1.5">
+                    <Flame className="h-3 w-3" /> Live Challenge
+                  </Badge>
+                )}
+                <span className="flex items-center gap-1 text-sm text-muted-foreground font-medium">
+                  <Clock className="h-3.5 w-3.5" /> {countdown}
+                </span>
               </div>
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Users className="h-4 w-4" />
-                <span>{schoolCount} student{schoolCount !== 1 ? "s" : ""} from your school</span>
+              <h1 className="text-3xl font-bold text-foreground leading-tight">{challenge.title}</h1>
+              <p className="text-muted-foreground mt-2 leading-relaxed whitespace-pre-line">{challenge.description}</p>
+            </div>
+          </div>
+
+          {/* Time progress bar */}
+          {!isClosed && (
+            <div className="mt-5 space-y-1.5">
+              <div className="flex justify-between text-xs text-muted-foreground font-medium">
+                <span>Challenge progress</span>
+                <span className="text-orange-600 font-bold">{daysLeft}d remaining until {formatDeadline(challenge.ends_at)}</span>
               </div>
+              <Progress value={timeProgress} className="h-2" />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="border-violet-100 bg-violet-50/40">
+          <CardContent className="p-5 text-center">
+            <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center mx-auto mb-2">
+              <Users className="h-5 w-5 text-violet-600" />
+            </div>
+            <div className="text-3xl font-bold text-violet-700">{submissionCount}</div>
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-0.5">Submissions</div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-amber-100 bg-amber-50/40">
+          <CardContent className="p-5 text-center">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center mx-auto mb-2">
+              <School className="h-5 w-5 text-amber-600" />
+            </div>
+            <div className="text-3xl font-bold text-amber-700">{participatingSchools}</div>
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-0.5">Schools</div>
+          </CardContent>
+        </Card>
+
+        <Card className={isClosed ? "border-gray-100 bg-gray-50/40" : "border-orange-100 bg-orange-50/40"}>
+          <CardContent className="p-5 text-center">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2 ${isClosed ? "bg-gray-100" : "bg-orange-100"}`}>
+              <Clock className={`h-5 w-5 ${isClosed ? "text-gray-500" : "text-orange-600"}`} />
+            </div>
+            <div className={`text-3xl font-bold ${isClosed ? "text-gray-500" : "text-orange-700"}`}>
+              {isClosed ? "Done" : `${daysLeft}d`}
+            </div>
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-0.5">
+              {isClosed ? "Ended" : `Until ${formatDeadline(challenge.ends_at)}`}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Prize */}
+      <Card className="border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50">
+        <CardContent className="p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-lg bg-amber-400 flex items-center justify-center">
+              <Trophy className="h-3.5 w-3.5 text-white" />
+            </div>
+            <h3 className="font-bold text-amber-900 uppercase tracking-wide text-sm">Prize</h3>
+          </div>
+          <div className="space-y-2 text-sm text-amber-800 font-medium">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🏆</span>
+              <span>3 hours of admissions consulting with our senior consultants</span>
+            </div>
+            <div className="pl-7 text-xs font-bold text-amber-600">OR</div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🏆</span>
+              <span>A family strategy session with your parents</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      {/* Hint */}
+      {challenge.example_prompt && !isClosed && (
+        <Card className="border-violet-100 bg-violet-50/40">
+          <CardContent className="p-4 flex items-start gap-3">
+            <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center shrink-0 mt-0.5">
+              <span className="text-sm">💡</span>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-violet-500 uppercase tracking-widest mb-1">Challenge Hint</p>
+              <p className="text-violet-800 font-semibold text-sm">{challenge.example_prompt}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-        {/* Left: Submission area */}
-        <div className="lg:col-span-3 space-y-6">
+      {/* Winner banner */}
+      {isClosed && winner && (
+        <Card className="border-yellow-300 overflow-hidden">
+          <div className="h-1 bg-gradient-to-r from-yellow-400 to-amber-500" />
+          <CardContent className="p-5 flex items-center gap-4">
+            <div className="text-4xl shrink-0">🏆</div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-amber-600 uppercase tracking-widest">Challenge Winner</p>
+              <p className="font-bold text-foreground text-xl mt-0.5">{winner.name}</p>
+              <p className="text-sm text-muted-foreground italic mt-1 truncate">"{winner.hook_text}"</p>
+            </div>
+            <div className="text-right shrink-0">
+              <div className="text-4xl font-bold text-amber-500">{winner.ai_scores?.overallScore}</div>
+              <div className="text-xs text-muted-foreground">/ 100</div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-          {/* Winner banner — only when closed */}
-          {isClosed && winner && (
-            <Card className="border-yellow-300 bg-gradient-to-r from-yellow-50 to-amber-50">
-              <CardContent className="p-5 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-yellow-400 flex items-center justify-center shrink-0">
-                  <Crown className="h-6 w-6 text-white" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-semibold text-yellow-700 uppercase tracking-wide">🏆 Challenge Winner</p>
-                  <p className="font-bold text-foreground">{winner.name}</p>
-                  <p className="text-sm text-muted-foreground italic mt-0.5">"{winner.hook_text}"</p>
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-yellow-600">{winner.ai_scores?.overallScore}</div>
-                  <div className="text-xs text-muted-foreground">/ 100</div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+      {/* Submission form */}
+      {!mySubmission && !isClosed && (
+        <Card className="border-violet-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <Target className="h-5 w-5 text-primary" />
+              Submit Your Opening
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground font-medium">
+              Write your opening — 1 to 3 sentences that begin your essay on the theme:{" "}
+              <span className="font-bold text-violet-700">"{challenge.theme}"</span>
+            </p>
+            <div className="space-y-1.5">
+              <Textarea
+                value={hookText}
+                onChange={e => setHookText(e.target.value)}
+                rows={5}
+                className="resize-none text-base border-violet-100 focus:border-violet-400"
+                maxLength={MAX_CHARS}
+              />
+              <div className="flex justify-end text-xs text-muted-foreground">
+                <span className={hookText.length > MAX_CHARS * 0.9 ? "text-destructive font-bold" : ""}>
+                  {hookText.length}/{MAX_CHARS}
+                </span>
+              </div>
+            </div>
+            <Button
+              onClick={handleSubmit}
+              disabled={submitting || hookText.trim().length < 10 || hookText.length > MAX_CHARS}
+              className="w-full h-12 text-base font-bold gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow shadow-violet-200"
+              size="lg"
+            >
+              {submitting
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting...</>
+                : <><ArrowRight className="h-5 w-5" /> Start the Challenge</>
+              }
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
-          {/* Submission form / confirmation / closed state */}
-          {!mySubmission && !isClosed && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Target className="h-5 w-5 text-primary" />
-                  Submit Your Hook
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Write your hook — 1 to 3 sentences that open your essay on the theme:{" "}
-                  <span className="font-medium text-foreground">"{challenge.theme}"</span>
-                </p>
-                <div className="space-y-1.5">
-                  <Textarea
-                    placeholder='e.g. "The smell of motor oil never leaves you — not the clothes, not the skin, not the memory of the day my father taught me silence."'
-                    value={hookText}
-                    onChange={e => setHookText(e.target.value)}
-                    rows={5}
-                    className="resize-none text-sm"
-                    maxLength={MAX_CHARS}
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Hooks land hardest in 1–3 sentences.</span>
-                    <span className={hookText.length > MAX_CHARS * 0.9 ? "text-destructive" : ""}>
-                      {hookText.length}/{MAX_CHARS}
-                    </span>
-                  </div>
-                </div>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={submitting || hookText.trim().length < 10 || hookText.length > MAX_CHARS}
-                  className="w-full gap-2"
-                >
-                  {submitting
-                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</>
-                    : <><ArrowRight className="h-4 w-4" /> Submit Hook</>
-                  }
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+      {/* Already submitted — open */}
+      {mySubmission && !isClosed && (
+        <Card className="border-green-200 bg-green-50/30">
+          <CardContent className="p-6 space-y-4">
+            <div className="flex items-start gap-4">
+              <div className="w-11 h-11 rounded-xl bg-green-500 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-green-800 text-lg">Your opening is in!</h3>
+                <p className="text-green-700 text-sm mt-0.5">Scores are locked until the challenge closes.</p>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
+                <Lock className="h-3.5 w-3.5" />
+                Results on {formatDate(challenge.ends_at)}
+              </div>
+            </div>
 
-          {/* Already submitted — scores hidden until close */}
-          {mySubmission && !isClosed && (
-            <Card className="border-green-200 bg-green-50/40">
-              <CardContent className="p-6 space-y-4">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-0.5">
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-green-800">Your hook is in!</h3>
-                    <p className="text-sm text-green-700 mt-0.5">Scores are locked until the challenge closes.</p>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Lock className="h-3.5 w-3.5" />
-                    Results on {formatDate(challenge.ends_at)}
-                  </div>
-                </div>
+            <div className="p-4 rounded-xl border border-green-200 bg-white/80">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">Your submitted opening</p>
+              <p className="text-base italic text-foreground font-medium">"{mySubmission.hook_text}"</p>
+            </div>
 
-                <div className="p-3 rounded-lg border border-green-200 bg-white/60">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">Your submitted hook</p>
-                  <p className="text-sm italic text-foreground">"{mySubmission.hook_text}"</p>
-                </div>
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-violet-50 border border-violet-100">
+              <Trophy className="h-4 w-4 text-violet-500 shrink-0" />
+              <p className="text-sm font-medium text-violet-700">
+                <span className="font-bold">{submissionCount} student{submissionCount !== 1 ? "s" : ""}</span> have entered the Primrose Challenge.
+                Rankings will be revealed when the challenge closes.
+              </p>
+            </div>
 
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-violet-50 border border-violet-100">
-                  <Trophy className="h-4 w-4 text-violet-600 shrink-0" />
-                  <p className="text-xs text-violet-700">
-                    <span className="font-semibold">{schoolCount} student{schoolCount !== 1 ? "s" : ""}</span> from your school have entered.
-                    Rankings will be revealed when the challenge closes — check your dashboard for a notification!
-                  </p>
-                </div>
+            <Button variant="outline" className="w-full" onClick={() => setMySubmission(null)}>
+              Edit my opening
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
-                <Button variant="outline" size="sm" className="w-full" onClick={handleEditHook}>
-                  Edit my hook
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+      {/* Closed — no submission */}
+      {!mySubmission && isClosed && (
+        <Card>
+          <CardContent className="p-10 text-center space-y-3">
+            <Lock className="h-12 w-12 text-muted-foreground mx-auto opacity-20" />
+            <p className="font-bold text-xl text-muted-foreground">This challenge has closed.</p>
+            <p className="text-muted-foreground text-sm">You did not submit an opening for this round. Stay tuned for the next Primrose Challenge!</p>
+          </CardContent>
+        </Card>
+      )}
 
-          {/* Closed — no submission */}
-          {!mySubmission && isClosed && (
-            <Card>
-              <CardContent className="p-6 text-center space-y-3 py-10">
-                <Lock className="h-10 w-10 text-muted-foreground mx-auto opacity-40" />
-                <p className="font-medium text-muted-foreground">This challenge has closed.</p>
-                <p className="text-sm text-muted-foreground">You didn't submit a hook for this round. Stay tuned for next week's challenge!</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Closed — your result */}
-          {mySubmission && isClosed && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">Your Result</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/50">
-                  {mySubmission.ai_scores && (
-                    <div className="text-center">
-                      <div className="text-4xl font-bold text-primary">{mySubmission.ai_scores.overallScore}</div>
-                      <div className="text-xs text-muted-foreground">out of 100</div>
-                    </div>
-                  )}
-                  {myRank && myRank > 0 && (
-                    <div className="text-center">
-                      <div className="text-4xl font-bold text-foreground">#{myRank}</div>
-                      <div className="text-xs text-muted-foreground">of {leaderboard.length}</div>
-                    </div>
-                  )}
-                  {mySubmission.ai_scores?.feedback && (
-                    <p className="flex-1 text-sm text-muted-foreground leading-relaxed">{mySubmission.ai_scores.feedback}</p>
-                  )}
-                </div>
-
-                {mySubmission.ai_scores?.criteria && (
-                  <div className="space-y-2.5">
-                    {mySubmission.ai_scores.criteria.map((c: CriterionScore) => (
-                      <div key={c.id} className="space-y-1">
-                        <div className="flex justify-between text-xs">
-                          <span className="font-medium" style={{ color: c.color }}>{c.name}</span>
-                          <span className="text-muted-foreground">{c.score}/100</span>
-                        </div>
-                        <div className="h-2 rounded-full bg-muted overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${c.score}%`, backgroundColor: c.color }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {mySubmission.ai_scores?.strengths?.length > 0 && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Strengths</p>
-                      {mySubmission.ai_scores.strengths.map((s: string, i: number) => (
-                        <div key={i} className="flex items-start gap-1.5 text-xs"><CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0 mt-0.5" />{s}</div>
-                      ))}
-                    </div>
-                    <div className="space-y-1.5">
-                      <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide">To improve</p>
-                      {mySubmission.ai_scores.improvements?.map((s: string, i: number) => (
-                        <div key={i} className="flex items-start gap-1.5 text-xs"><ChevronUp className="h-3.5 w-3.5 text-orange-500 shrink-0 mt-0.5" />{s}</div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="p-3 rounded-lg border border-border bg-muted/30">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">Your hook</p>
-                  <p className="text-sm italic">"{mySubmission.hook_text}"</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Right: Leaderboard */}
-        <div className="lg:col-span-2">
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Trophy className="h-5 w-5 text-amber-500" />
-                {isClosed ? "Final Rankings" : "Your School"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!isClosed ? (
-                // During open challenge: just show count + suspense
-                <div className="space-y-4">
-                  <div className="text-center py-6 space-y-2">
-                    <div className="text-5xl font-bold text-primary">{schoolCount}</div>
-                    <p className="text-sm text-muted-foreground font-medium">student{schoolCount !== 1 ? "s" : ""} from your school have entered</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-muted/50 border border-border text-center">
-                    <Lock className="h-4 w-4 text-muted-foreground mx-auto mb-1.5" />
-                    <p className="text-xs text-muted-foreground">
-                      Rankings and scores are revealed when the challenge closes on{" "}
-                      <span className="font-medium text-foreground">{formatDate(challenge.ends_at)}</span>
-                    </p>
-                  </div>
-                  {!mySubmission && (
-                    <div className="text-center">
-                      <p className="text-xs text-violet-600 font-medium">Will you be #1? Submit your hook →</p>
-                    </div>
-                  )}
-                </div>
-              ) : leaderboard.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Trophy className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">No scored submissions for your school.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {leaderboard.map((entry, idx) => {
-                    const rank = idx + 1;
-                    const rl = rankLabel(rank);
-                    const isMe = entry.student_id === currentUserId;
-                    return (
-                      <div
-                        key={entry.id}
-                        className={`p-3 rounded-xl border transition-colors ${
-                          isMe ? "border-primary/30 bg-primary/5"
-                            : rank === 1 ? "border-yellow-200 bg-yellow-50/50"
-                            : "border-border hover:bg-muted/30"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-bold ${rl.cls}`}>
-                            {rl.icon}{rl.label}
-                          </span>
-                          <Avatar className="h-7 w-7">
-                            <AvatarFallback className="text-[10px]">{entry.initials}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{entry.name}</p>
-                            <p className="text-xs text-muted-foreground truncate italic">"{entry.hook_text}"</p>
-                          </div>
-                          <span className="text-sm font-bold text-primary shrink-0">
-                            {entry.ai_scores?.overallScore}
-                          </span>
-                        </div>
-                        {entry.ai_scores?.criteria && (
-                          <div className="flex gap-1 mt-2 pl-10">
-                            {entry.ai_scores.criteria.map((c: CriterionScore) => (
-                              <div
-                                key={c.id}
-                                title={`${c.name}: ${c.score}`}
-                                className="h-1.5 flex-1 rounded-full"
-                                style={{ backgroundColor: c.color, opacity: c.score / 100 }}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+      {/* Closed — your result */}
+      {mySubmission && isClosed && (
+        <Card className="overflow-hidden">
+          <div className="h-1.5 bg-gradient-to-r from-violet-500 via-purple-500 to-amber-400" />
+          <CardHeader>
+            <CardTitle className="text-xl">Your Result</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid grid-cols-2 gap-4">
+              {mySubmission.ai_scores && (
+                <div className="rounded-2xl bg-violet-50 border border-violet-200 p-5 text-center">
+                  <div className="text-xs font-bold text-violet-500 uppercase tracking-widest mb-1">Your Score</div>
+                  <div className="text-5xl font-bold text-violet-700">{mySubmission.ai_scores.overallScore}</div>
+                  <div className="text-xs text-muted-foreground mt-1">out of 100</div>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+              {myRank && myRank > 0 && (
+                <div className="rounded-2xl bg-amber-50 border border-amber-200 p-5 text-center">
+                  <div className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-1">Your Rank</div>
+                  <div className="text-5xl font-bold text-amber-600">{rankEmoji(myRank)}</div>
+                  <div className="text-xs text-muted-foreground mt-1">of {leaderboard.length} entries</div>
+                </div>
+              )}
+            </div>
+
+            {mySubmission.ai_scores?.feedback && (
+              <p className="text-muted-foreground leading-relaxed text-sm">{mySubmission.ai_scores.feedback}</p>
+            )}
+
+            {mySubmission.ai_scores?.criteria && (
+              <div className="space-y-3">
+                {mySubmission.ai_scores.criteria.map((c: CriterionScore) => (
+                  <div key={c.id} className="space-y-1.5">
+                    <div className="flex justify-between text-sm font-semibold">
+                      <span style={{ color: c.color }}>{c.name}</span>
+                      <span className="text-muted-foreground">{c.score}/100</span>
+                    </div>
+                    <div className="h-2.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${c.score}%`, backgroundColor: c.color }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {mySubmission.ai_scores?.strengths?.length > 0 && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-green-50 border border-green-100 p-4 space-y-2">
+                  <p className="text-xs font-bold text-green-600 uppercase tracking-widest">Strengths</p>
+                  {mySubmission.ai_scores.strengths.map((s: string, i: number) => (
+                    <div key={i} className="flex items-start gap-1.5 text-xs text-green-800 font-medium">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0 mt-0.5" />{s}
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-xl bg-orange-50 border border-orange-100 p-4 space-y-2">
+                  <p className="text-xs font-bold text-orange-600 uppercase tracking-widest">To Improve</p>
+                  {mySubmission.ai_scores.improvements?.map((s: string, i: number) => (
+                    <div key={i} className="flex items-start gap-1.5 text-xs text-orange-800 font-medium">
+                      <ChevronUp className="h-3.5 w-3.5 text-orange-500 shrink-0 mt-0.5" />{s}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="p-4 rounded-xl border bg-muted/20">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">Your opening</p>
+              <p className="text-sm italic font-medium">"{mySubmission.hook_text}"</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Final leaderboard */}
+      {isClosed && leaderboard.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <Trophy className="h-5 w-5 text-amber-500" />
+              Final Rankings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {leaderboard.map((entry, idx) => {
+              const rank = idx + 1;
+              const isMe = entry.student_id === currentUserId;
+              const isTop3 = rank <= 3;
+              return (
+                <div
+                  key={entry.id}
+                  className={`p-3.5 rounded-xl border transition-colors ${
+                    isMe ? "border-violet-300 bg-violet-50"
+                      : rank === 1 ? "border-yellow-200 bg-yellow-50/60"
+                      : rank === 2 ? "border-slate-200 bg-slate-50/60"
+                      : rank === 3 ? "border-orange-200 bg-orange-50/40"
+                      : "border-border hover:bg-muted/20"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl w-8 text-center shrink-0">{rankEmoji(rank)}</span>
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="text-xs font-bold">{entry.initials}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-bold truncate ${isTop3 ? "text-foreground" : "text-muted-foreground"}`}>{entry.name}</p>
+                      <p className="text-xs text-muted-foreground truncate italic">"{entry.hook_text}"</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className={`text-lg font-bold ${rank === 1 ? "text-amber-500" : "text-primary"}`}>
+                        {entry.ai_scores?.overallScore}
+                      </span>
+                    </div>
+                  </div>
+                  {entry.ai_scores?.criteria && isTop3 && (
+                    <div className="flex gap-1 mt-2 pl-11">
+                      {entry.ai_scores.criteria.map((c: CriterionScore) => (
+                        <div
+                          key={c.id}
+                          title={`${c.name}: ${c.score}`}
+                          className="h-1.5 flex-1 rounded-full"
+                          style={{ backgroundColor: c.color, opacity: 0.7 + (c.score / 333) }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
     </div>
   );
 };
