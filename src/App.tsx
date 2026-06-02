@@ -71,6 +71,11 @@ import CounselorEditStudent from "./pages/CounselorEditStudent";
 import WeeklyChallenge from "./pages/WeeklyChallenge";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import TeacherEssays from "./pages/TeacherEssays";
+import { AppFooter } from "@/components/AppFooter";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
+import CookiePolicy from "./pages/CookiePolicy";
+import ContactUs from "./pages/ContactUs";
 
 const queryClient = new QueryClient();
 
@@ -176,6 +181,8 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
             <main className="flex-1 overflow-auto">
               {children}
             </main>
+
+            <AppFooter />
           </div>
 
           {/* Demo Navigation - floating button */}
@@ -633,6 +640,12 @@ const App = () => {
               <SuperAdmin />
             </ProtectedRoute>
           } />
+
+          {/* ── Legal pages (public) ── */}
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
+          <Route path="/cookie-policy" element={<CookiePolicy />} />
+          <Route path="/contact-us" element={<ContactUs />} />
 
           {/* ── Catch-all ── */}
           <Route path="*" element={<NotFound />} />
