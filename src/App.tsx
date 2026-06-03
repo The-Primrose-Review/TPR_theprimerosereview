@@ -79,6 +79,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import CookiePolicy from "./pages/CookiePolicy";
 import ContactUs from "./pages/ContactUs";
+import ContactSupport from "./pages/ContactSupport";
 
 const queryClient = new QueryClient();
 
@@ -190,7 +191,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
               </header>
 
               {/* Page Content */}
-              <main className="flex-1 overflow-auto">
+              <main className="flex-1 overflow-auto pb-24">
                 {children}
               </main>
             </div>
@@ -671,6 +672,7 @@ const App = () => {
           <Route path="/terms-of-service" element={<TermsOfService />} />
           <Route path="/cookie-policy" element={<CookiePolicy />} />
           <Route path="/contact-us" element={<ContactUs />} />
+          <Route path="/contact-support" element={<ContactSupport />} />
 
           {/* ── Catch-all ── */}
           <Route path="*" element={<NotFound />} />

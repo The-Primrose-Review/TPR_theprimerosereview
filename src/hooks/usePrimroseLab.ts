@@ -65,18 +65,38 @@ export const usePrimroseLab = () => {
     const fetchContext = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase
+
+      const parts: string[] = [];
+
+      // Onboarding answers
+      const { data: onboarding } = await supabase
         .from('onboarding_answers')
         .select('personal_story, inspiration, background, career_goals, personal_strengths')
         .eq('user_id', user.id)
-        .single();
-      if (!data) return;
-      const parts: string[] = [];
-      if (data.personal_story) parts.push(`Personal story: ${data.personal_story}`);
-      if (data.inspiration) parts.push(`Inspirations: ${data.inspiration}`);
-      if (data.background) parts.push(`Background: ${data.background}`);
-      if (data.career_goals) parts.push(`Goals: ${data.career_goals}`);
-      if (data.personal_strengths) parts.push(`Strengths: ${data.personal_strengths}`);
+        .maybeSingle();
+
+      if (onboarding) {
+        if (onboarding.personal_story) parts.push(`Personal story: ${onboarding.personal_story}`);
+        if (onboarding.inspiration) parts.push(`Inspirations: ${onboarding.inspiration}`);
+        if (onboarding.background) parts.push(`Background: ${onboarding.background}`);
+        if (onboarding.career_goals) parts.push(`Goals: ${onboarding.career_goals}`);
+        if (onboarding.personal_strengths) parts.push(`Strengths: ${onboarding.personal_strengths}`);
+      }
+
+      // Voice insights from Eva conversation (most recent session)
+      const { data: voiceRow } = await supabase
+        .from('voice_insights')
+        .select('insights')
+        .eq('student_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (voiceRow?.insights && Array.isArray(voiceRow.insights) && voiceRow.insights.length > 0) {
+        const insightLines = voiceRow.insights.map((i: any) => `${i.category}: ${i.content}`);
+        parts.push(`Eva conversation insights:\n${insightLines.join('\n')}`);
+      }
+
       if (parts.length > 0) setStudentContext(parts.join('\n'));
     };
     fetchContext();

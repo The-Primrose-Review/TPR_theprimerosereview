@@ -416,8 +416,7 @@ const WeeklyChallenge = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground font-medium">
-              Write your opening — 1 to 3 sentences that begin your essay on the theme:{" "}
-              <span className="font-bold text-violet-700">"{challenge.theme}"</span>
+              Write your opening essay paragraph, 1 to 3 sentences that hook the reader.
             </p>
             <div className="space-y-1.5">
               <Textarea

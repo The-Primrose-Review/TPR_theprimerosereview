@@ -29,10 +29,10 @@ const ContactUs = () => {
               </div>
             </div>
             <a
-              href="mailto:support@theprimrosereview.com"
+              href="mailto:team@primrosecrm.com"
               className="inline-flex items-center gap-2 text-primary hover:underline font-medium"
             >
-              support@theprimrosereview.com
+              team@primrosecrm.com
             </a>
           </div>
 

@@ -72,7 +72,13 @@ const TermsOfService = () => {
             <h2 className="text-xl font-semibold">Disclaimer</h2>
             <p className="text-muted-foreground leading-relaxed">
               The Primrose Review provides educational guidance, feedback, and admissions support tools.
-              We do not guarantee admission, scholarships, interviews, or acceptance to any educational institution.
+              All content, feedback, recommendations, and AI-generated outputs are intended solely for
+              educational and informational purposes.
+            </p>
+            <p className="text-muted-foreground leading-relaxed font-medium">
+              We do not guarantee admission, scholarships, interviews, or acceptance to any educational
+              institution. Admissions decisions are made solely by those institutions and are outside
+              the control of The Primrose Review.
             </p>
           </section>
 

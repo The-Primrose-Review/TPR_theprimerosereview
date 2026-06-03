@@ -15,8 +15,10 @@ export const useAuthState = (): AuthState => {
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+      const u = session?.user ?? null;
+      setUser(u);
       setIsLoading(false);
+      console.log("[Auth] session resolved:", u ? { id: u.id, email: u.email, role: u.role } : null);
     });
 
     // Listen for auth changes

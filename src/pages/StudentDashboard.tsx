@@ -308,7 +308,7 @@ const StudentDashboard = () => {
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
       {/* Primrose Challenge popup — shown once per challenge per browser */}
       <Dialog open={!!challengePopup} onOpenChange={open => { if (!open) dismissChallengePopup() }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <div className="flex items-center gap-3 mb-1">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-amber-400 flex items-center justify-center shrink-0">
@@ -318,32 +318,27 @@ const StudentDashboard = () => {
                 <Flame className="h-3 w-3" /> New Challenge Live
               </Badge>
             </div>
-            <DialogTitle className="text-xl">{challengePopup?.title}</DialogTitle>
-            <DialogDescription className="text-sm leading-relaxed pt-1 whitespace-pre-line">
-              {challengePopup?.description}
+            <DialogTitle className="text-xl">The Primrose Challenge</DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed pt-1">
+              Write your best hook — show us your essay opening paragraph and win a prize.
             </DialogDescription>
           </DialogHeader>
-          <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
-            <p className="text-xs font-semibold text-amber-800 mb-2">Prize</p>
-            <div className="space-y-1 text-sm text-amber-700">
-              <div className="flex items-start gap-2">
-                <Trophy className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-500" />
-                <span>3 hours of admissions consulting with our senior consultants</span>
-              </div>
-              <p className="text-xs text-amber-600 font-medium pl-5">OR</p>
-              <div className="flex items-start gap-2">
-                <Trophy className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-500" />
-                <span>A family strategy session with your parents</span>
-              </div>
-            </div>
-          </div>
-          <p className="text-sm font-medium text-foreground">Ready to begin? Let's do this!</p>
-          <div className="flex gap-2">
+          <p className="text-sm text-muted-foreground">
+            For more information, head to the{" "}
+            <button
+              className="text-primary font-medium underline underline-offset-2 hover:opacity-80"
+              onClick={() => { dismissChallengePopup(); navigate('/weekly-challenge') }}
+            >
+              Challenge section
+            </button>
+            .
+          </p>
+          <div className="flex gap-2 pt-1">
             <Button
               className="flex-1 gap-2"
               onClick={() => { dismissChallengePopup(); navigate('/weekly-challenge') }}
             >
-              <Trophy className="h-4 w-4" /> Start the Challenge
+              <Trophy className="h-4 w-4" /> Go to Challenge
             </Button>
             <Button variant="ghost" onClick={dismissChallengePopup} className="flex-1">
               Maybe Later

@@ -364,7 +364,7 @@ export default function ScholarshipFinder() {
                     id="citizenship"
                     value={profile.citizenship}
                     onChange={e => updateProfile({ citizenship: e.target.value })}
-                    placeholder="e.g. Israeli, American, Indian..."
+                    placeholder="e.g. American, British, Canadian..."
                     className="border-amber-100 focus:border-amber-300"
                   />
                 </div>

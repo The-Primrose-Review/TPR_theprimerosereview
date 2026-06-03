@@ -93,7 +93,7 @@ const additionalToolItems: NavItem[] = [
   { title: "Eva - Admissions Coach", url: "/interview-simulator", icon: Mic },
   { title: "The Primrose Challenge", url: "/weekly-challenge", icon: Trophy },
   { title: "Scholarship Finder", url: "/scholarship-finder", icon: Star },
-  { title: "Tuition Calculator", url: "/tuition-calculator", icon: Calculator },
+  { title: "Study Cost Planner", url: "/tuition-calculator", icon: Calculator },
   { title: "My Stats", url: "/student-stats", icon: BarChart3, tourId: "tour-nav-stats" },
 ];
 

@@ -1,18 +1,22 @@
 
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useInterviewState } from "@/hooks/useInterviewState";
 import { useRealtimeInterview } from "@/hooks/useRealtimeInterview";
 import InterviewHeader from "@/components/interview/InterviewHeader";
 import WelcomeScreen from "@/components/interview/WelcomeScreen";
 import LoadingScreen from "@/components/interview/LoadingScreen";
 import InterviewContainer from "@/components/interview/InterviewContainer";
-import FinalFeedback from "@/components/interview/FinalFeedback";
+import FinalFeedback, { InsightState } from "@/components/interview/FinalFeedback";
+import { supabase } from "@/integrations/supabase/client";
 
 type InterviewStatus = "idle" | "preparing" | "active" | "ended";
 
 const InterviewSimulator = () => {
+  const navigate = useNavigate();
   const { programName, setProgramName, university, setUniversity, resetInterview } = useInterviewState();
   const [status, setStatus] = useState<InterviewStatus>("idle");
+  const [insightState, setInsightState] = useState<InsightState>({ status: "idle" });
 
   const {
     connect,
@@ -43,14 +47,41 @@ const InterviewSimulator = () => {
     await connect(programName, university);
   };
 
-  const handleEnd = () => {
+  const handleEnd = async () => {
+    // Capture history before disconnect (disconnect doesn't clear it, but snapshot is safer)
+    const snapshot = [...conversationHistory];
     disconnect();
     setStatus("ended");
+
+    if (snapshot.length === 0) {
+      setInsightState({ status: "idle" });
+      return;
+    }
+
+    setInsightState({ status: "loading" });
+    try {
+      const { data, error } = await supabase.functions.invoke("extract-voice-insights", {
+        body: { conversationHistory: snapshot },
+      });
+      if (error || !data) throw new Error(error?.message ?? "No response");
+      setInsightState({
+        status: "success",
+        insights: data.insights ?? [],
+        quality: data.quality ?? "short",
+      });
+    } catch {
+      setInsightState({ status: "error" });
+    }
   };
 
   const handleReset = () => {
     resetInterview();
+    setInsightState({ status: "idle" });
     setStatus("idle");
+  };
+
+  const handleContinue = () => {
+    navigate("/student-dashboard");
   };
 
   return (
@@ -95,8 +126,9 @@ const InterviewSimulator = () => {
           <FinalFeedback
             university={university}
             programName={programName}
-            conversationHistory={conversationHistory}
+            insightState={insightState}
             onReset={handleReset}
+            onContinue={handleContinue}
           />
         )}
       </div>
