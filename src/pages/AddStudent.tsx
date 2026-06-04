@@ -165,13 +165,15 @@ const AddStudent = () => {
         }
       }
 
-      // ── Step 4: Insert into profiles ─────────────────────────
-      const { error: profileError } = await supabase.from("profiles").insert({
-        user_id: studentUserId,
-        email: manualForm.email,
-        full_name: `${manualForm.firstName} ${manualForm.lastName}`,
-        school_id: schoolId,
-      });
+      // ── Step 4: Update profile (handle_new_user trigger already created the row) ──
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          email: manualForm.email,
+          full_name: `${manualForm.firstName} ${manualForm.lastName}`,
+          school_id: schoolId,
+        })
+        .eq("user_id", studentUserId);
       if (profileError) throw profileError;
 
       // ── Step 5: Assign student role ───────────────────────────
