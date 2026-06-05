@@ -8,16 +8,21 @@ interface SlotCardProps {
   slot: ApplicationEssaySlotWithDraft;
   onStartWriting: (s: ApplicationEssaySlotWithDraft) => void;
   onEditDraft: (s: ApplicationEssaySlotWithDraft) => void;
+  onEditFeedback: (s: ApplicationEssaySlotWithDraft) => void;
   onDelete: (id: string) => void;
   isDeleting: boolean;
 }
 
-export const SlotCard = ({ slot, onStartWriting, onEditDraft, onDelete, isDeleting }: SlotCardProps) => {
+export const SlotCard = ({ slot, onStartWriting, onEditDraft, onEditFeedback, onDelete, isDeleting }: SlotCardProps) => {
   const draft        = slot.essay_feedback;
   const hasDraft     = !!slot.essay_feedback_id;
   const isDraft      = draft?.status === "draft";
-  const isPending    = draft?.status === "pending" || draft?.status === "in_review";
+  const isPending    = draft?.status === "pending" || draft?.status === "in_review" || draft?.status === "in_progress";
   const feedbackSent = draft?.status === "sent" || draft?.status === "read";
+
+  // Drive badge from draft.status when feedback has arrived — covers cases where
+  // the DB trigger hasn't yet updated application_essays.status
+  const displayStatus: EssaySlotStatus = feedbackSent ? "sent" : (slot.status as EssaySlotStatus);
 
   return (
     <div className="group relative border border-border rounded-xl p-4 bg-card hover:shadow-sm transition-all">
@@ -34,7 +39,7 @@ export const SlotCard = ({ slot, onStartWriting, onEditDraft, onDelete, isDeleti
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <SlotStatusBadge status={slot.status as EssaySlotStatus} />
+          <SlotStatusBadge status={displayStatus} />
           <Button
             size="icon"
             variant="ghost"
@@ -77,7 +82,7 @@ export const SlotCard = ({ slot, onStartWriting, onEditDraft, onDelete, isDeleti
       )}
 
       {hasDraft && feedbackSent && (
-        <FeedbackBanner slot={slot} onEdit={() => onEditDraft(slot)} />
+        <FeedbackBanner slot={slot} onEdit={() => onEditFeedback(slot)} />
       )}
 
       {!hasDraft && (

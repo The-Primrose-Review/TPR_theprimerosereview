@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Plus } from "lucide-react";
 import type { useApplicationEssays } from "@/hooks/useApplicationEssays";
 
@@ -12,9 +11,8 @@ interface AddSlotFormProps {
 }
 
 export const AddSlotForm = ({ applicationId, onDone, createSlot }: AddSlotFormProps) => {
-  const [label, setLabel]   = useState("");
-  const [prompt, setPrompt] = useState("");
-  const [limit, setLimit]   = useState("");
+  const [label, setLabel] = useState("");
+  const [limit, setLimit] = useState("");
 
   return (
     <div className="border border-dashed border-border rounded-xl p-4 space-y-3 bg-muted/30">
@@ -26,15 +24,6 @@ export const AddSlotForm = ({ applicationId, onDone, createSlot }: AddSlotFormPr
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           className="h-8 text-sm"
-        />
-      </div>
-      <div>
-        <label className="text-xs text-muted-foreground mb-1 block">Prompt (optional)</label>
-        <Textarea
-          placeholder="Paste the full essay prompt…"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          className="text-sm min-h-[64px] resize-none"
         />
       </div>
       <div>
@@ -56,7 +45,6 @@ export const AddSlotForm = ({ applicationId, onDone, createSlot }: AddSlotFormPr
               {
                 application_id: applicationId,
                 essay_label: label.trim(),
-                essay_prompt: prompt.trim() || undefined,
                 word_limit: limit ? parseInt(limit) : undefined,
               },
               { onSuccess: onDone }

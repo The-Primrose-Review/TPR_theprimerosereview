@@ -38,7 +38,7 @@ import {
 const getStatusColor = (status: string) => {
   switch (status) {
     case "approved":    return "bg-green-500 text-white";
-    case "sent":        return "bg-green-500 text-white";
+    case "sent":        return "bg-blue-500 text-white";
     case "review":      return "bg-yellow-500 text-white";
     case "in_progress": return "bg-yellow-500 text-white";
     case "draft":       return "bg-blue-500 text-white";
@@ -62,8 +62,10 @@ const getStatusIcon = (status: string) => {
   }
 };
 
-const getStatusLabel = (status: string) =>
-  status.replace(/-/g, " ").replace(/_/g, " ");
+const getStatusLabel = (status: string) => {
+  if (status === "sent") return "Feedback Received";
+  return status.replace(/-/g, " ").replace(/_/g, " ");
+};
 
 // ── Component ─────────────────────────────────────────────────
 
@@ -102,15 +104,16 @@ const StudentPersonalArea = () => {
 
   // Live slot counts per application — avoids relying on stale DB columns
   // that a trigger overwrites whenever slots are added/removed.
-  const [slotCounts, setSlotCounts] = useState<Record<string, { total: number; draft: number; inReview: number; approved: number }>>({});
+  const [slotCounts, setSlotCounts] = useState<Record<string, { total: number; draft: number; inReview: number; sent: number; approved: number }>>({});
 
   const buildSlotCounts = (data: { application_id: string; status: string }[]) => {
-    const counts: Record<string, { total: number; draft: number; inReview: number; approved: number }> = {};
+    const counts: Record<string, { total: number; draft: number; inReview: number; sent: number; approved: number }> = {};
     for (const row of data) {
-      if (!counts[row.application_id]) counts[row.application_id] = { total: 0, draft: 0, inReview: 0, approved: 0 };
+      if (!counts[row.application_id]) counts[row.application_id] = { total: 0, draft: 0, inReview: 0, sent: 0, approved: 0 };
       counts[row.application_id].total++;
       if (row.status === "draft")     counts[row.application_id].draft++;
       if (row.status === "in_review") counts[row.application_id].inReview++;
+      if (row.status === "sent")      counts[row.application_id].sent++;
       if (row.status === "approved")  counts[row.application_id].approved++;
     }
     return counts;
@@ -283,10 +286,15 @@ const StudentPersonalArea = () => {
                           </p>
                         )}
                       </div>
-                      <Badge className={getStatusColor(essay.status)}>
-                        {getStatusIcon(essay.status)}
-                        <span className="ml-1 capitalize">{getStatusLabel(essay.status)}</span>
-                      </Badge>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge className={getStatusColor(essay.status)}>
+                          {getStatusIcon(essay.status)}
+                          <span className="ml-1">{getStatusLabel(essay.status)}</span>
+                        </Badge>
+                        {essay.status === "sent" && (
+                          <span className="text-xs text-blue-500 font-medium">(check feedback below)</span>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -532,7 +540,7 @@ const StudentPersonalArea = () => {
                             Deadline: {new Date(app.deadline_date).toLocaleDateString()}
                           </span>
                           <span>
-                            Essays: {slotCounts[app.id]?.approved ?? 0}/{app.required_essays ?? 0} approved
+                            Essays: {(slotCounts[app.id]?.approved ?? 0) + (slotCounts[app.id]?.inReview ?? 0) + (slotCounts[app.id]?.sent ?? 0)}/{app.required_essays ?? 0} submitted
                           </span>
                           <span>
                             Recs: {app.recommendations_submitted}/{app.recommendations_requested}
@@ -552,14 +560,14 @@ const StudentPersonalArea = () => {
                             if (app.status === "sent") return "Submitted";
                             const c = slotCounts[app.id];
                             if (!c || c.total === 0) return "Not Started";
-                            if (c.inReview > 0 || c.approved > 0) return "In Progress";
+                            if (c.inReview > 0 || c.sent > 0 || c.approved > 0) return "In Progress";
                             if (c.draft > 0) return "In Draft";
                             return "Not Started";
                           })()}
                         </Badge>
                         <span className="text-sm font-medium text-primary">
                           {app.required_essays
-                            ? Math.round(((slotCounts[app.id]?.approved ?? 0) / app.required_essays) * 100)
+                            ? Math.round((((slotCounts[app.id]?.approved ?? 0) + (slotCounts[app.id]?.inReview ?? 0) + (slotCounts[app.id]?.sent ?? 0)) / app.required_essays) * 100)
                             : 0}% complete
                         </span>
                         {app.urgent && (
@@ -571,7 +579,7 @@ const StudentPersonalArea = () => {
                     </div>
                     <Progress
                       value={app.required_essays
-                        ? Math.round(((slotCounts[app.id]?.approved ?? 0) / app.required_essays) * 100)
+                        ? Math.round((((slotCounts[app.id]?.approved ?? 0) + (slotCounts[app.id]?.inReview ?? 0) + (slotCounts[app.id]?.sent ?? 0)) / app.required_essays) * 100)
                         : 0}
                       className="mt-3 h-2"
                     />
@@ -826,21 +834,17 @@ const StudentPersonalArea = () => {
           </div>
 
           <div className="p-4 border-t flex gap-2">
-           <Button 
-    className="flex-1"
-    onClick={() => {
-      const id = selectedEssay?.id;
-      setSelectedEssay(null);
-      navigate(`/edit-essay?id=${id}`);
-    }}
-  >
-    <FileText className="h-4 w-4 mr-2" />
-    Edit Essay
-  </Button>
-  <Button variant="outline" className="flex-1">
-    <History className="h-4 w-4 mr-2" />
-    View History
-  </Button>
+            <Button
+              className="flex-1"
+              onClick={() => {
+                const id = selectedEssay?.id;
+                setSelectedEssay(null);
+                navigate(`/edit-essay?id=${id}`);
+              }}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Edit Essay
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -118,7 +118,7 @@ export const useStudentPersonalArea = () => {
         .from("essay_feedback")
         .select("*")
         .eq("student_id", user.id)
-        .in("status", ["sent", "read"])
+        .in("status", ["sent", "read", "approved"])
         .order("sent_at", { ascending: false });
 
       if (error) throw error;

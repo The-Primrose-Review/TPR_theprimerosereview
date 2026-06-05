@@ -54,6 +54,12 @@ export const EssaysPanel = ({
     );
   };
 
+  const handleEditFeedback = (slot: ApplicationEssaySlotWithDraft) => {
+    if (!slot.essay_feedback_id) return;
+    onClose();
+    navigate(`/edit-essay?id=${slot.essay_feedback_id}`);
+  };
+
   return (
     <div className="space-y-4">
       {isAlreadySubmitted && (
@@ -125,6 +131,7 @@ export const EssaysPanel = ({
               slot={slot}
               onStartWriting={handleStartWriting}
               onEditDraft={handleEditDraft}
+              onEditFeedback={handleEditFeedback}
               onDelete={(id) => deleteSlot.mutate(id)}
               isDeleting={deleteSlot.isPending}
             />

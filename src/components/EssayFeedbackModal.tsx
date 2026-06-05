@@ -87,7 +87,7 @@ export const EssayFeedbackModal = ({ isOpen, onClose, essay }: EssayFeedbackModa
               trackedChanges={trackedChanges}
               isSaving={isSaving}
               onBack={() => setShowPreview(false)}
-              onSaveDraft={() => saveFeedback('draft', trackedChanges)}
+              onSaveDraft={() => saveFeedback('in_progress', trackedChanges)}
               onSend={() => saveFeedback('sent', trackedChanges)}
             />
           )}

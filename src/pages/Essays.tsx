@@ -121,10 +121,9 @@ const EssayDialog = ({ essay, onOpenFeedback, onUpdateStatus }: EssayDialogProps
       </DialogHeader>
 
       <Tabs defaultValue="review" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="review">Review</TabsTrigger>
           <TabsTrigger value="feedback">Feedback</TabsTrigger>
-          <TabsTrigger value="analysis">AI Analysis</TabsTrigger>
         </TabsList>
 
         <TabsContent value="review" className="space-y-4">
@@ -187,24 +186,6 @@ const EssayDialog = ({ essay, onOpenFeedback, onUpdateStatus }: EssayDialogProps
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Update Status</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {['in_progress', 'pending', 'sent'].map(s => (
-                    <Button
-                      key={s}
-                      variant={essay.status === s ? 'default' : 'outline'}
-                      size="sm"
-                      className="w-full justify-start"
-                      onClick={() => onUpdateStatus(essay.id, s)}
-                    >
-                      {getStatusLabel(s)}
-                    </Button>
-                  ))}
-                </CardContent>
-              </Card>
             </div>
           </div>
         </TabsContent>
@@ -240,57 +221,12 @@ const EssayDialog = ({ essay, onOpenFeedback, onUpdateStatus }: EssayDialogProps
           <CounselorFeedbackHistory essayId={essay.id} />
         </TabsContent>
 
-        <TabsContent value="analysis" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-ai-accent" />
-                AI Analysis
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {essay.aiAnalysis ? (
-                <div className="space-y-4">
-                  {essay.aiScore && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Overall Score</span>
-                      <div className="flex items-center gap-2">
-                        <Progress value={essay.aiScore} className="w-24 h-2" />
-                        <span className="text-sm font-bold">{essay.aiScore}/100</span>
-                      </div>
-                    </div>
-                  )}
-                  <pre className="text-xs text-muted-foreground bg-muted p-3 rounded-lg overflow-auto whitespace-pre-wrap">
-                    {JSON.stringify(essay.aiAnalysis, null, 2)}
-                  </pre>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Sparkles className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground mb-4">No AI analysis yet</p>
-                  <Button variant="outline" size="sm">
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Run AI Analysis
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
 
       <div className="flex gap-2 pt-4 border-t border-border">
         <Button className="flex-1" onClick={() => onOpenFeedback(essay)}>
           <MessageSquare className="h-4 w-4 mr-2" />
           Send Feedback
-        </Button>
-        <Button variant="outline" className="flex-1">
-          <User className="h-4 w-4 mr-2" />
-          Assign Task
-        </Button>
-        <Button variant="outline">
-          <Share className="h-4 w-4 mr-2" />
-          Share
         </Button>
       </div>
     </DialogContent>
@@ -510,10 +446,6 @@ const fetchEssays = async () => {
                   <SelectItem value="aiScore">AI Score</SelectItem>
                 </SelectContent>
               </Select>
-
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4" />
-              </Button>
 
               <div className="flex border rounded-md">
                 <Button

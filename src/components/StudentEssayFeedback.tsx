@@ -95,7 +95,7 @@ export const StudentEssayFeedback = () => {
       if (!user) return;
 
       const [counselorResult, teacherSharesResult] = await Promise.all([
-        supabase.from('essay_feedback').select('*').in('status', ['sent', 'read']).order('sent_at', { ascending: false }),
+        supabase.from('essay_feedback').select('*').in('status', ['sent', 'read', 'approved']).order('sent_at', { ascending: false }),
         (supabase as any)
           .from('essay_teacher_shares')
           .select('id, essay_feedback_id, feedback_items, track_changes, ai_analysis, personal_message, sent_at')

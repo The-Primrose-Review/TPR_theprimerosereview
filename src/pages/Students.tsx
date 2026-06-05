@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAtRiskCriteria, AtRiskCriteria } from "@/hooks/useAtRiskCriteria";
-import { computeCompletion, classifyRisk } from "@/lib/atRiskUtils";
+import { resolveStudentStatus, computeCompletion, classifyRisk } from "@/lib/atRiskUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +23,7 @@ import {
   CheckCircle,
   Clock,
   User,
+  Minus,
   GraduationCap,
   FileText,
   Calendar,
@@ -52,7 +53,8 @@ interface Student {
   graduation_year: number | null
   // computed
   completionPercentage: number
-  status: 'on-track' | 'needs-attention' | 'at-risk'
+  status: 'on-track' | 'needs-attention' | 'at-risk' | 'not-started'
+  reasons: string[]
   lastActivity: string
   // related data
   essaysSubmitted: number
@@ -68,14 +70,12 @@ interface Student {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────
-const computeStatus = (completion: number, criteria: AtRiskCriteria, hasNearDeadline: boolean): Student['status'] =>
-  classifyRisk(completion, hasNearDeadline, criteria);
-
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'on-track': return 'default'
     case 'needs-attention': return 'secondary'
     case 'at-risk': return 'destructive'
+    case 'not-started': return 'outline'
     default: return 'outline'
   }
 }
@@ -85,28 +85,14 @@ const getStatusIcon = (status: string) => {
     case 'on-track': return CheckCircle
     case 'needs-attention': return Clock
     case 'at-risk': return AlertTriangle
+    case 'not-started': return Minus
     default: return User
   }
 }
 
-const getRiskReasons = (student: Student, criteria: AtRiskCriteria): string[] => {
-  const reasons: string[] = []
-  if (student.hasNearDeadline)
-    reasons.push('Application deadline within 14 days')
-  if (criteria.triggerNoEssays && student.essaysSubmitted === 0 && student.totalEssays > 0)
-    reasons.push(`No essays submitted (0/${student.totalEssays})`)
-  if (criteria.triggerLowCompletion && student.completionPercentage < criteria.atRiskThreshold)
-    reasons.push(`Completion critically low (${student.completionPercentage}%)`)
-  if (criteria.triggerNoRecs && student.recommendationsSubmitted === 0 && student.recommendationsRequested > 0)
-    reasons.push('No recommendation letters received')
-  if (reasons.length === 0)
-    reasons.push('Overall progress requires attention')
-  return reasons
-}
-
-const AtRiskBadge = ({ student, criteria }: { student: Student; criteria: AtRiskCriteria }) => {
+const AtRiskBadge = ({ student }: { student: Student }) => {
   const StatusIcon = getStatusIcon(student.status)
-  const reasons = student.status === 'at-risk' ? getRiskReasons(student, criteria) : []
+  const reasons = student.status === 'at-risk' ? student.reasons : []
 
   return (
     <div className="relative inline-block group/risk">
@@ -151,15 +137,22 @@ const Students = () => {
     fetchStudents()
   }, [])
 
-  // Recompute completion + status live whenever criteria changes
+  // Recompute completion + status + reasons live whenever criteria changes
   const displayStudents = useMemo(() =>
     students.map(s => {
+      if (s.status === 'not-started') return s;
       const completionPercentage = computeCompletion(
         s.essaysSubmitted, s.totalEssays,
         s.recommendationsSubmitted, s.recommendationsRequested,
         criteria
       )
-      return { ...s, completionPercentage, status: computeStatus(completionPercentage, criteria, s.hasNearDeadline) }
+      const status = classifyRisk(completionPercentage, s.hasNearDeadline, criteria) as Student['status']
+      const reasons: string[] = []
+      if (s.hasNearDeadline) reasons.push('Application deadline within 14 days')
+      if (completionPercentage < criteria.atRiskThreshold)
+        reasons.push(`Completion at ${completionPercentage}% — below ${criteria.atRiskThreshold}% threshold`)
+      if (reasons.length === 0) reasons.push('Overall progress requires attention')
+      return { ...s, completionPercentage, status, reasons }
     }),
     [students, criteria]
   )
@@ -291,26 +284,11 @@ const Students = () => {
         const recommendationsRequested = studentRecs.length
         const recommendationsSubmitted = studentRecs.filter(r => r.status === 'sent').length
 
-        const completion = computeCompletion(essaysSubmitted, totalEssays, recommendationsSubmitted, recommendationsRequested, criteria)
-
         const studentTasks = tasks.filter(t => t.student_id === studentId)
-        const now = new Date()
-        const fourteenDaysFromNow = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
 
-        // Upcoming deadlines = unsubmitted applications with deadline within 14 days
-        const upcomingDeadlines = (applications ?? []).filter(a =>
-          a.student_id === studentId &&
-          a.status !== 'sent' &&
-          a.deadline_date &&
-          new Date(a.deadline_date) >= now &&
-          new Date(a.deadline_date) <= fourteenDaysFromNow
-        ).length
-        const hasNearDeadline = (applications ?? []).some(a =>
-          a.student_id === studentId &&
-          a.status !== 'sent' &&
-          a.deadline_date &&
-          new Date(a.deadline_date) <= fourteenDaysFromNow
-        )
+        const studentAppsForRisk = (applications ?? []).filter(a => a.student_id === studentId)
+        const { status, completionPercentage: completion, hasNearDeadline, upcomingDeadlines, reasons } =
+          resolveStudentStatus(studentAppsForRisk, studentSlots, studentRecs, criteria)
 
         return {
           id: studentId,
@@ -323,7 +301,7 @@ const Students = () => {
           act_score: sp?.act_score || null,
           graduation_year: sp?.graduation_year || null,
           completionPercentage: completion,
-          status: computeStatus(completion, criteria, hasNearDeadline),
+          status,
           lastActivity: 'recently',
           essaysSubmitted,
           totalEssays,
@@ -331,6 +309,7 @@ const Students = () => {
           recommendationsRequested,
           upcomingDeadlines,
           hasNearDeadline,
+          reasons,
           targetSchools: targetSchools.filter(ts => ts.student_id === studentId).map(ts => ts.college),
           extracurriculars: extracurriculars.filter(ec => ec.student_id === studentId).map(ec => ec.activity),
           tasks: studentTasks.map(t => ({ id: t.id, task: t.task, due_date: t.due_date, completed: t.completed })),
@@ -464,6 +443,103 @@ const Students = () => {
       }
     }
 
+    function generateReport() {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Header
+      doc.setFillColor(79, 70, 229);
+      doc.rect(0, 0, pageWidth, 28, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(18);
+      doc.setFont("helvetica", "bold");
+      doc.text("Student Report", 14, 12);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Generated ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`, 14, 21);
+
+      // Student profile
+      doc.setTextColor(30, 30, 30);
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Student Profile", 14, 40);
+
+      autoTable(doc, {
+        startY: 45,
+        head: [],
+        body: [
+          ["Name", student.name],
+          ["Email", student.email ?? "—"],
+          ["School", student.school_name ?? "—"],
+          ["Graduation Year", student.graduation_year ? String(student.graduation_year) : "—"],
+          ["GPA", student.gpa != null ? String(student.gpa) : "—"],
+          ["SAT Score", student.sat_score != null ? String(student.sat_score) : "—"],
+          ["ACT Score", student.act_score != null ? String(student.act_score) : "—"],
+        ],
+        theme: "plain",
+        styles: { fontSize: 10, cellPadding: 3 },
+        columnStyles: { 0: { fontStyle: "bold", cellWidth: 50 } },
+      });
+
+      // Progress summary
+      const afterProfile = (doc as any).lastAutoTable.finalY + 10;
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Application Progress", 14, afterProfile);
+
+      const statusLabel = student.status.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+      autoTable(doc, {
+        startY: afterProfile + 5,
+        head: [],
+        body: [
+          ["Status", statusLabel],
+          ["Completion", `${student.completionPercentage}%`],
+          ["Essays Submitted", `${student.essaysSubmitted} / ${student.totalEssays}`],
+          ["Recommendations Received", `${student.recommendationsSubmitted} / ${student.recommendationsRequested}`],
+          ["Upcoming Deadlines (14 days)", String(student.upcomingDeadlines)],
+        ],
+        theme: "plain",
+        styles: { fontSize: 10, cellPadding: 3 },
+        columnStyles: { 0: { fontStyle: "bold", cellWidth: 70 } },
+      });
+
+      // Target schools
+      if (student.targetSchools.length > 0) {
+        const afterProgress = (doc as any).lastAutoTable.finalY + 10;
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text("Target Schools", 14, afterProgress);
+
+        autoTable(doc, {
+          startY: afterProgress + 5,
+          head: [["School"]],
+          body: student.targetSchools.map(s => [s]),
+          theme: "striped",
+          styles: { fontSize: 10, cellPadding: 3 },
+          headStyles: { fillColor: [79, 70, 229] },
+        });
+      }
+
+      // Risk reasons
+      if (student.reasons && student.reasons.length > 0 && student.status !== "on-track" && student.status !== "not-started") {
+        const afterSchools = (doc as any).lastAutoTable.finalY + 10;
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text("Attention Flags", 14, afterSchools);
+
+        autoTable(doc, {
+          startY: afterSchools + 5,
+          head: [],
+          body: student.reasons.map(r => [r]),
+          theme: "plain",
+          styles: { fontSize: 10, cellPadding: 3, textColor: [180, 60, 60] },
+        });
+      }
+
+      doc.save(`${student.name.replace(/\s+/g, "_")}_report.pdf`);
+    }
+
     return (
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -503,12 +579,10 @@ const Students = () => {
         </DialogHeader>
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="progress">Progress</TabsTrigger>
             <TabsTrigger value="essays">Essays</TabsTrigger>
-            <TabsTrigger value="tasks">Tasks</TabsTrigger>
-            {/* <TabsTrigger value="meetings">Meetings</TabsTrigger> */}
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
@@ -561,25 +635,6 @@ const Students = () => {
               </Card>
             </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-primary" />
-                  Extracurriculars
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {student.extracurriculars.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {student.extracurriculars.map((activity, i) => (
-                      <Badge key={i} variant="secondary">{activity}</Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No extracurriculars added yet</p>
-                )}
-              </CardContent>
-            </Card>
           </TabsContent>
 
           <TabsContent value="progress" className="space-y-4">
@@ -645,33 +700,6 @@ const Students = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="tasks" className="space-y-4">
-            <Card>
-              <CardHeader><CardTitle>Active Tasks</CardTitle></CardHeader>
-              <CardContent>
-                {student.tasks.length > 0 ? (
-                  <div className="space-y-3">
-                    {student.tasks.map(task => (
-                      <div key={task.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
-                        <div>
-                          <div className="font-medium">{task.task}</div>
-                          {task.due_date && (
-                            <div className="text-sm text-muted-foreground">Due: {task.due_date}</div>
-                          )}
-                        </div>
-                        <Badge variant={task.completed ? 'default' : 'outline'}>
-                          {task.completed ? 'Completed' : 'Pending'}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No tasks assigned yet</p>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           {/* <TabsContent value="meetings" className="space-y-4">
             <Card>
               <CardHeader>
@@ -702,7 +730,7 @@ const Students = () => {
             <MessageSquare className="h-4 w-4 mr-2" />
             Add Meeting Note
           </Button> */}
-          <Button variant="outline" className="flex-1">
+          <Button variant="outline" className="flex-1" onClick={generateReport}>
             <FileText className="h-4 w-4 mr-2" />
             Generate Report
           </Button>
@@ -757,6 +785,7 @@ const Students = () => {
                   <SelectItem value="on-track">On Track</SelectItem>
                   <SelectItem value="needs-attention">Needs Attention</SelectItem>
                   <SelectItem value="at-risk">At Risk</SelectItem>
+                  <SelectItem value="not-started">Not Started</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={gpaFilter} onValueChange={setGpaFilter}>
@@ -833,7 +862,7 @@ const Students = () => {
                         <TableCell>{student.essaysSubmitted}/{student.totalEssays}</TableCell>
                         <TableCell>{student.upcomingDeadlines}</TableCell>
                         <TableCell>
-                          <AtRiskBadge student={student} criteria={criteria} />
+                          <AtRiskBadge student={student} />
                         </TableCell>
                         <TableCell>
                           <Button
@@ -893,7 +922,7 @@ const Students = () => {
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          <AtRiskBadge student={student} criteria={criteria} />
+                          <AtRiskBadge student={student} />
                         </div>
                       </div>
 

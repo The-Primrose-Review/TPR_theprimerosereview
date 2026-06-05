@@ -3,6 +3,7 @@ export type EssaySlotStatus =
   | "not_started"
   | "draft"
   | "in_review"
+  | "sent"
   | "approved";
 
 /** A single required-essay slot belonging to one application */
@@ -60,14 +61,16 @@ export interface LinkEssayToSlotPayload {
 export const SLOT_STATUS_TRANSITIONS: Record<EssaySlotStatus, EssaySlotStatus[]> = {
   not_started: ["draft"],
   draft:       ["in_review", "not_started"],
-  in_review:   ["approved", "draft"],
-  approved:    ["in_review"],             // counselor can reopen if needed
+  in_review:   ["sent", "approved", "draft"],
+  sent:        ["draft", "approved"],
+  approved:    ["in_review"],
 };
 
 export const SLOT_STATUS_LABELS: Record<EssaySlotStatus, string> = {
   not_started: "Not Started",
   draft:       "Draft",
   in_review:   "In Review",
+  sent:        "Feedback Received",
   approved:    "Approved",
 };
 
@@ -75,5 +78,6 @@ export const SLOT_STATUS_COLORS: Record<EssaySlotStatus, string> = {
   not_started: "bg-gray-100 text-gray-600",
   draft:       "bg-blue-100 text-blue-700",
   in_review:   "bg-yellow-100 text-yellow-700",
+  sent:        "bg-purple-100 text-purple-700",
   approved:    "bg-green-100 text-green-700",
 };

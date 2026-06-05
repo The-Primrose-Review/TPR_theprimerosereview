@@ -70,7 +70,7 @@ export const FeedbackEditorView = ({
             <Button variant="outline" size="sm" onClick={onShowPreview}>
               <Eye className="h-3.5 w-3.5 mr-1.5" />Preview
             </Button>
-            <Button variant="outline" size="sm" onClick={() => saveFeedback('draft', trackedChanges)} disabled={isSaving}>
+            <Button variant="outline" size="sm" onClick={() => saveFeedback('in_progress', trackedChanges)} disabled={isSaving}>
               {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
               Save Draft
             </Button>

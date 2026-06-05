@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAtRiskCriteria } from "./useAtRiskCriteria";
-import { computeCompletion, classifyRisk } from "@/lib/atRiskUtils";
+import { resolveStudentStatus } from "@/lib/atRiskUtils";
 
 export interface DashboardStudent {
   id: string;
@@ -12,7 +12,7 @@ export interface DashboardStudent {
   essaysSubmitted: number;
   totalEssays: number;
   upcomingDeadlines: number;
-  status: "on-track" | "needs-attention" | "at-risk";
+  status: "on-track" | "needs-attention" | "at-risk" | "not-started";
   lastActivity: string;
 }
 
@@ -55,8 +55,8 @@ export const useIndexDashboard = () => {
       const studentIds = assignments?.map((a) => a.student_id) ?? [];
       if (studentIds.length === 0) return [];
 
-      // Fetch all data in parallel
-      const [profilesRes, studentProfilesRes, essaySlotsRes, recsRes, applicationsRes] =
+      // Step 1 (parallel): profiles, student profiles, recs, applications
+      const [profilesRes, studentProfilesRes, recsRes, applicationsRes] =
         await Promise.all([
           supabase
             .from("profiles")
@@ -68,12 +68,6 @@ export const useIndexDashboard = () => {
             .select("user_id, gpa, sat_score")
             .in("user_id", studentIds),
 
-          // application_essays joined through applications to scope by student
-          (supabase
-            .from("application_essays")
-            .select("id, status, updated_at, applications!inner(student_id)") as any)
-            .in("applications.student_id", studentIds),
-
           supabase
             .from("recommendation_requests")
             .select("student_id, status")
@@ -81,9 +75,18 @@ export const useIndexDashboard = () => {
 
           supabase
             .from("applications")
-            .select("student_id, deadline_date, status")
+            .select("id, student_id, deadline_date, status")
             .in("student_id", studentIds),
         ]);
+
+      // Step 2: fetch essay slots by application IDs
+      const allAppIds = (applicationsRes.data ?? []).map((a) => a.id);
+      const essaySlotsRes = allAppIds.length > 0
+        ? await supabase
+            .from("application_essays")
+            .select("application_id, status, updated_at")
+            .in("application_id", allAppIds)
+        : { data: [] as { application_id: string; status: string; updated_at: string }[] };
 
       const profileMap = new Map(
         (profilesRes.data ?? []).map((p) => [p.user_id, p])
@@ -92,45 +95,24 @@ export const useIndexDashboard = () => {
         (studentProfilesRes.data ?? []).map((p) => [p.user_id, p])
       );
 
-      // Flatten essay slots: attach student_id from the nested applications join
-      const allSlots = (essaySlotsRes.data ?? []).map((row: any) => ({
-        studentId: row.applications.student_id as string,
-        status:    row.status as string,
-        updatedAt: row.updated_at as string,
-      }));
-
-      const now = new Date();
-
       return studentIds.map((id): DashboardStudent => {
         const profile = profileMap.get(id);
         const sp = studentProfileMap.get(id);
-        const slots = allSlots.filter((s: { studentId: string; status: string; updatedAt: string }) => s.studentId === id);
-        const recs = (recsRes.data ?? []).filter((r) => r.student_id === id);
         const studentApps = (applicationsRes.data ?? []).filter((a) => a.student_id === id);
+        const studentAppIds = studentApps.map((a) => a.id);
+        const slots = (essaySlotsRes.data ?? []).filter((s) => studentAppIds.includes(s.application_id));
+        const recs = (recsRes.data ?? []).filter((r) => r.student_id === id);
 
+        const { status, completionPercentage, upcomingDeadlines } =
+          resolveStudentStatus(studentApps, slots, recs, criteria);
+
+        const essaysSubmitted = slots.filter((s) => ["in_review", "approved"].includes(s.status)).length;
         const totalEssays = slots.length;
-        const essaysSubmitted = slots.filter((s: { status: string }) =>
-          ["in_review", "approved"].includes(s.status)
-        ).length;
-        const recsRequested = recs.length;
-        const recsSubmitted = recs.filter((r) => r.status === "sent").length;
-
-        const completionPercentage = computeCompletion(essaysSubmitted, totalEssays, recsSubmitted, recsRequested, criteria);
-
-        const fourteenDaysFromNow = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-        const hasNearDeadline = studentApps.some(
-          (a) =>
-            a.status !== "sent" &&
-            a.deadline_date &&
-            new Date(a.deadline_date) <= fourteenDaysFromNow
-        );
-
-        const status = classifyRisk(completionPercentage, hasNearDeadline, criteria) as DashboardStudent["status"];
 
         // Last activity = most recent essay slot updated_at
         const lastEssayUpdate = slots
-          .map((s: { updatedAt: string }) => new Date(s.updatedAt).getTime())
-          .sort((a: number, b: number) => b - a)[0];
+          .map((s) => new Date(s.updated_at).getTime())
+          .sort((a, b) => b - a)[0];
 
         const lastActivity = lastEssayUpdate
           ? formatRelativeTime(lastEssayUpdate)
@@ -144,9 +126,7 @@ export const useIndexDashboard = () => {
           completionPercentage,
           essaysSubmitted,
           totalEssays,
-          upcomingDeadlines: studentApps.filter(
-            (a) => a.status !== "sent" && a.deadline_date && new Date(a.deadline_date) <= fourteenDaysFromNow
-          ).length,
+          upcomingDeadlines,
           status,
           lastActivity,
         };

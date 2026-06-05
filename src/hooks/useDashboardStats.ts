@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAtRiskCriteria } from "./useAtRiskCriteria";
-import { computeCompletion, classifyRisk } from "@/lib/atRiskUtils";
+import { resolveStudentStatus } from "@/lib/atRiskUtils";
 
 export interface DashboardStatsData {
   totalStudents: number;
@@ -93,99 +93,52 @@ const studentIds = assignments?.map((a) => a.student_id) ?? [];
       //   upcomingDeadlines: deadlinesRes.count ?? 0,
       //   atRiskStudents: atRiskStudentIds.size,
       // };
-      const [essaysRes, deadlinesRes, essayStatsRes, recsRes, tasksRes] = await Promise.all([
-  // Essays currently in review
-  supabase
-    .from("essay_feedback")
-    .select("id", { count: "exact", head: true })
-    .in("student_id", studentIds)
-    .in("status", ["draft", "in_progress","pending"]),
+      // Step 1: essays in review + all applications (parallel — apps needed for appIds)
+      const [essaysInReviewRes, applicationsRes] = await Promise.all([
+        supabase
+          .from("essay_feedback")
+          .select("id", { count: "exact", head: true })
+          .in("student_id", studentIds)
+          .in("status", ["draft", "in_progress", "pending"]),
 
-  // Applications with deadlines in the next 7 days (keep for future)
-  supabase
-    .from("applications")
-    .select("id", { count: "exact", head: true })
-    .in("student_id", studentIds)
-    .gte("deadline_date", new Date().toISOString().split("T")[0])
-    .lte(
-      "deadline_date",
-      new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split("T")[0]
-    )
-    .neq("status", "submitted"),
+        supabase
+          .from("applications")
+          .select("id, student_id, deadline_date, status")
+          .in("student_id", studentIds),
+      ]);
 
-  // For at-risk: fetch essay statuses per student
-  supabase
-    .from("essay_feedback")
-    .select("student_id, status")
-    .in("student_id", studentIds),
+      const applicationsData = applicationsRes.data ?? [];
+      const appIds = applicationsData.map(a => a.id);
 
-  // For at-risk: fetch recommendation statuses per student
-  supabase
-    .from("recommendation_requests")
-    .select("student_id, status")
-    .in("student_id", studentIds),
+      // Step 2: essay slots + recs (parallel — essay slots need appIds from step 1)
+      const [essaySlotsRes, recsRes] = await Promise.all([
+        appIds.length > 0
+          ? supabase
+              .from("application_essays")
+              .select("application_id, status")
+              .in("application_id", appIds)
+          : Promise.resolve({ data: [] as { application_id: string; status: string }[], error: null }),
 
-  // For at-risk: tasks to detect near deadlines (within 30 days)
-  supabase
-    .from("tasks")
-    .select("student_id, due_date, completed")
-    .in("student_id", studentIds),
-]);
+        supabase
+          .from("recommendation_requests")
+          .select("student_id, status")
+          .in("student_id", studentIds),
+      ]);
 
-// Compute at-risk using same logic as Students.tsx
-// const atRiskStudentIds = new Set(
-//   studentIds.filter(studentId => {
-//     const studentEssays = (essayStatsRes.data ?? []).filter(e => e.student_id === studentId);
-//     const totalEssays = studentEssays.length;
-//     const essaysSubmitted = studentEssays.filter(e => e.status === "sent").length;
+      const perStudent = studentIds.map(studentId => {
+        const studentApps = applicationsData.filter(a => a.student_id === studentId);
+        const studentAppIds = studentApps.map(a => a.id);
+        const studentSlots = (essaySlotsRes.data ?? []).filter(s => studentAppIds.includes(s.application_id));
+        const studentRecs = (recsRes.data ?? []).filter(r => r.student_id === studentId);
+        return resolveStudentStatus(studentApps, studentSlots, studentRecs, criteria);
+      });
 
-//     const studentRecs = (recsRes.data ?? []).filter(r => r.student_id === studentId);
-//     const recsRequested = studentRecs.length;
-//     const recsSubmitted = studentRecs.filter(r => r.status === "sent").length;
-
-//     const essayScore = totalEssays > 0 ? (essaysSubmitted / totalEssays) * 60 : 0;
-//     const recScore = recsRequested > 0 ? (recsSubmitted / recsRequested) * 40 : 0;
-//     const completion = Math.round(essayScore + recScore);
-
-//     return completion < 40; // at-risk = below 40%
-//   })
-// );
-
-const now = new Date();
-const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-const atRiskCount = studentIds.filter(studentId => {
-  const studentEssays = (essayStatsRes.data ?? []).filter(e => e.student_id === studentId);
-  const totalEssays = studentEssays.length;
-  const essaysSubmitted = studentEssays.filter(e =>
-    ["sent", "read", "approved"].includes(e.status)
-  ).length;
-
-  const studentRecs = (recsRes.data ?? []).filter(r => r.student_id === studentId);
-  const recsRequested = studentRecs.length;
-  const recsSubmitted = studentRecs.filter(r => r.status === "sent").length;
-
-  const completion = computeCompletion(essaysSubmitted, totalEssays, recsSubmitted, recsRequested, criteria);
-
-  const hasNearDeadline = (tasksRes.data ?? []).some(t =>
-    t.student_id === studentId &&
-    !t.completed && t.due_date &&
-    new Date(t.due_date) >= now && new Date(t.due_date) <= thirtyDaysFromNow
-  );
-
-  return classifyRisk(completion, hasNearDeadline, criteria) === "at-risk";
-}).length;
-
-const atRiskStudents = atRiskCount;
-
-return {
-  totalStudents: studentIds.length,
-  essaysInReview: essaysRes.count ?? 0,
-  upcomingDeadlines: deadlinesRes.count ?? 0,
-  atRiskStudents,
-};
+      return {
+        totalStudents: studentIds.length,
+        essaysInReview: essaysInReviewRes.count ?? 0,
+        upcomingDeadlines: perStudent.reduce((sum, s) => sum + s.upcomingDeadlines, 0),
+        atRiskStudents: perStudent.filter(s => s.status === "at-risk").length,
+      };
     },
   });
 };

@@ -71,6 +71,7 @@ const SubmitEssay = () => {
   const slotWordLimit = searchParams.get("wordLimit");
   const urlDraftId    = searchParams.get("draftId");
   const urlSchoolName = searchParams.get("schoolName");
+  const isReadonly    = searchParams.get("readonly") === "true";
 
   const [isSubmitting, setIsSubmitting]   = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
@@ -150,7 +151,8 @@ const SubmitEssay = () => {
         .select("essay_title, essay_prompt, essay_content, target_school, word_limit, status")
         .eq("id", urlDraftId)
         .single() as any);
-      if (error || !data || data.status !== "draft") return;
+      if (error || !data) return;
+      if (!isReadonly && data.status !== "draft") return;
       setTitle(data.essay_title ?? "");
       setPrompt(data.essay_prompt ?? "");
       setContent(data.essay_content ?? "");
@@ -485,13 +487,25 @@ const SubmitEssay = () => {
         </div>
 
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Submit an Essay</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            {isReadonly ? "Final Draft" : "Submit an Essay"}
+          </h1>
           <p className="text-muted-foreground mt-1">
-            {slotId
-              ? `Writing for: ${slotLabel}`
-              : "Your counselor will review and provide feedback"}
+            {isReadonly
+              ? `Approved final version — ${slotLabel ?? "essay"}`
+              : slotId
+                ? `Writing for: ${slotLabel}`
+                : "Your counselor will review and provide feedback"}
           </p>
-          {slotId && (
+          {isReadonly && (
+            <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg w-fit">
+              <CheckCircle className="h-4 w-4 text-green-600 shrink-0" />
+              <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                This essay has been approved by your counselor. No further edits needed.
+              </span>
+            </div>
+          )}
+          {!isReadonly && slotId && (
             <Badge variant="outline" className="mt-2">Linked to application slot</Badge>
           )}
         </div>
@@ -523,6 +537,7 @@ const SubmitEssay = () => {
                       placeholder="e.g. Common App Personal Statement"
                       className="pl-10"
                       required
+                      disabled={isReadonly}
                     />
                   </div>
                 </div>
@@ -551,7 +566,7 @@ const SubmitEssay = () => {
             </Card>
 
             {/* Word Limit */}
-            <Card>
+            {!isReadonly && <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Hash className="h-5 w-5 text-primary" />
@@ -599,7 +614,7 @@ const SubmitEssay = () => {
                   />
                 </div>
               </CardContent>
-            </Card>
+            </Card>}
 
             {/* Essay Content */}
             <Card>
@@ -617,7 +632,7 @@ const SubmitEssay = () => {
                       {wordCount} {effectiveWordLimit ? `/ ${effectiveWordLimit}` : ""} words
                     </Badge>
                     {isOverLimit && <Badge variant="destructive">Over limit</Badge>}
-                    {wordCount >= 50 && (
+                    {!isReadonly && wordCount >= 50 && (
                       <Button
                         type="button"
                         size="sm"
@@ -644,25 +659,28 @@ const SubmitEssay = () => {
               </CardHeader>
               <CardContent className="space-y-3">
 
-                <p className="text-xs text-muted-foreground">
-                  Tip: highlight any passage to get AI coaching on that section.
-                </p>
+                {!isReadonly && (
+                  <p className="text-xs text-muted-foreground">
+                    Tip: highlight any passage to get AI coaching on that section.
+                  </p>
+                )}
 
                 <Textarea
                   ref={textareaRef}
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  onMouseUp={handleSelectionChange}
-                  onKeyUp={handleSelectionChange}
+                  onMouseUp={isReadonly ? undefined : handleSelectionChange}
+                  onKeyUp={isReadonly ? undefined : handleSelectionChange}
                   placeholder="Write or paste your essay here..."
                   className={`resize-none min-h-[400px] text-sm leading-relaxed ${
                     isOverLimit ? "border-destructive focus-visible:ring-destructive" : ""
-                  }`}
+                  } ${isReadonly ? "opacity-80 cursor-default" : ""}`}
                   required
+                  readOnly={isReadonly}
                 />
 
                 {/* Selection coaching bar */}
-                {selectedText && (
+                {!isReadonly && selectedText && (
                   <div className="border border-primary/20 rounded-lg bg-primary/5 p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -716,7 +734,7 @@ const SubmitEssay = () => {
             </Card>
 
             {/* Recipient */}
-            <Card>
+            {!isReadonly && <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Send className="h-5 w-5 text-primary" />
@@ -775,10 +793,16 @@ const SubmitEssay = () => {
                   </div>
                 )}
               </CardContent>
-            </Card>
+            </Card>}
 
             {/* Submit */}
             <div className="flex gap-3 pb-6">
+              {isReadonly ? (
+                <Button type="button" className="flex-1" onClick={() => navigate(-1)}>
+                  Back to Application
+                </Button>
+              ) : (
+              <>
               <Button type="button" variant="outline" className="flex-1" onClick={() => navigate(-1)}>
                 Cancel
               </Button>
@@ -814,6 +838,8 @@ const SubmitEssay = () => {
                   </>
                 )}
               </Button>
+              </>
+              )}
             </div>
 
           </form>

@@ -53,7 +53,7 @@ export const DashboardStats = () => {
     {
       title: "Upcoming Deadlines",
       value: data?.upcomingDeadlines ?? 0,
-      change: "next 7 days",
+      change: "next 14 days",
       changeType: "neutral" as const,
       icon: Calendar,
       color: "warning",

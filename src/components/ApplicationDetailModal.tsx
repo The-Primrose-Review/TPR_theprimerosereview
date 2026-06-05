@@ -25,8 +25,7 @@ export const ApplicationDetailModal = ({
 
   const {
     slots, isLoading, createSlot, deleteSlot,
-    totalSlots, approvedSlots, notStartedSlots, draftSlots, inReviewSlots,
-    completionPercentage,
+    totalSlots, approvedSlots, notStartedSlots, draftSlots, inReviewSlots, sentSlots,
   } = useApplicationEssays(application?.id ?? null);
 
   const { submitApplication } = useSubmitApplication();
@@ -38,8 +37,14 @@ export const ApplicationDetailModal = ({
 
   if (!application) return null;
 
+  const requiredEssays       = application.required_essays ?? 0;
+  const submittedSlots       = inReviewSlots + sentSlots + approvedSlots;
+  const completionPercentage = requiredEssays > 0
+    ? Math.round((submittedSlots / requiredEssays) * 100)
+    : 0;
+  const allSlotsAdded        = requiredEssays > 0 && totalSlots >= requiredEssays;
   const allFeedbackSent =
-    totalSlots > 0 &&
+    allSlotsAdded &&
     slots.every((s) => s.essay_feedback !== null && s.essay_feedback.status === "sent");
 
   const isAlreadySubmitted = application.status === "sent";
@@ -68,6 +73,7 @@ export const ApplicationDetailModal = ({
           notStartedSlots={notStartedSlots}
           draftSlots={draftSlots}
           inReviewSlots={inReviewSlots}
+          sentSlots={sentSlots}
           sentRecs={sentCount}
           totalRecs={totalCount}
         />

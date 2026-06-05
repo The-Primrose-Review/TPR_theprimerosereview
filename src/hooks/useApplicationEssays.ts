@@ -233,7 +233,7 @@ export const useApplicationEssays = (applicationId: string | null) => {
   const notStartedSlots = slots?.filter((s) => s.status === "not_started").length ?? 0;
   const draftSlots      = slots?.filter((s) => s.status === "draft").length ?? 0;
   const inReviewSlots   = slots?.filter((s) => s.status === "in_review").length ?? 0;
-  const completionPercentage = totalSlots > 0 ? Math.round((approvedSlots / totalSlots) * 100) : 0;
+  const sentSlots       = slots?.filter((s) => s.status === "sent").length ?? 0;
 
   return {
     slots: slots ?? [],
@@ -242,7 +242,7 @@ export const useApplicationEssays = (applicationId: string | null) => {
     createSlot,
     createSlots,
     updateSlotStatus,
-    syncSlotFromFeedbackStatus,   // ← use this in Essays.tsx after sending feedback
+    syncSlotFromFeedbackStatus,
     linkEssayToSlot,
     unlinkEssayFromSlot,
     deleteSlot,
@@ -251,6 +251,6 @@ export const useApplicationEssays = (applicationId: string | null) => {
     notStartedSlots,
     draftSlots,
     inReviewSlots,
-    completionPercentage,
+    sentSlots,
   };
 };

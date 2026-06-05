@@ -15,13 +15,14 @@ interface ApplicationHeaderProps {
   notStartedSlots: number;
   draftSlots: number;
   inReviewSlots: number;
+  sentSlots: number;
   sentRecs: number;
   totalRecs: number;
 }
 
 export const ApplicationHeader = ({
   application, completionPercentage,
-  totalSlots, approvedSlots, notStartedSlots, draftSlots, inReviewSlots,
+  totalSlots, approvedSlots, notStartedSlots, draftSlots, inReviewSlots, sentSlots,
   sentRecs, totalRecs,
 }: ApplicationHeaderProps) => {
   const daysLeft = getDaysUntil(application.deadline_date);
@@ -85,6 +86,7 @@ export const ApplicationHeader = ({
           {notStartedSlots > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-300 inline-block" />{notStartedSlots} not started</span>}
           {draftSlots > 0      && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />{draftSlots} in draft</span>}
           {inReviewSlots > 0   && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" />{inReviewSlots} in review</span>}
+          {sentSlots > 0       && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />{sentSlots} feedback received</span>}
           {approvedSlots > 0   && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" />{approvedSlots} approved</span>}
         </div>
       </div>

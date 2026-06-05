@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Star, PenLine, ChevronRight } from "lucide-react";
+import { MessageSquare, Star, PenLine } from "lucide-react";
 import type { ApplicationEssaySlotWithDraft } from "@/types/applicationEssays";
 
 interface FeedbackBannerProps {
@@ -43,9 +43,6 @@ export const FeedbackBanner = ({ slot, onEdit }: FeedbackBannerProps) => {
       <div className="flex gap-2">
         <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onEdit}>
           <PenLine className="h-3 w-3 mr-1.5" />Edit Essay
-        </Button>
-        <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={onEdit}>
-          <ChevronRight className="h-3 w-3" />View Full Feedback
         </Button>
       </div>
     </div>
