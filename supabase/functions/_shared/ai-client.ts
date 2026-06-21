@@ -1,4 +1,4 @@
-const DEFAULT_MODEL = "claude-sonnet-4-20250514";
+const DEFAULT_MODEL = "claude-sonnet-4-6";
 
 export async function callAI(options: {
   systemPrompt: string;

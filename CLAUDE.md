@@ -51,7 +51,7 @@ The token is in `.env` as `SUPABASE_ACCESS_TOKEN`. Use `--project-ref` instead o
 
 All AI calls go through Supabase Edge Functions — never directly from the browser. The shared AI wrapper is at `supabase/functions/_shared/ai-client.ts`.
 
-- **Primary model**: `claude-sonnet-4-20250514`
+- **Primary model**: `claude-sonnet-4-6`
 - **Fallback**: Gemini (configured in `ai-client.ts`)
 - **Prompt caching**: Enabled for system prompts to reduce latency and cost
 - **Rate limiting**: `supabase/functions/_shared/rate-limiter.ts` — 10 calls/min for generation, 20/min for analysis, enforced per user
